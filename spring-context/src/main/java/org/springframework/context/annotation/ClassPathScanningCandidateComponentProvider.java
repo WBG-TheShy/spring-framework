@@ -309,6 +309,13 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 * @return a corresponding Set of autodetected bean definitions
 	 */
 	public Set<BeanDefinition> findCandidateComponents(String basePackage) {
+		//Spring中提供了一个机制,如果你在 META-INF路径下创建了一个spring.components文件
+		//在这个文件里,你要写key-value形式的语句
+		//key通常是类的完全限定名称，尽管这不是规则。同样,value通常是目标类型的完全限定名称，但它实际上可以是任何标记
+		//你写好后,Spring就只盯着你这个文件来进行创建bean,而不会去扫描了
+		//但是Spring只会看你的value是不是我想要的(比如value是@Service,@Component等,Spring这里选择要被@Index修饰过的,而@Component注解上就有一个@Index)
+		//indexSupportsIncludeFilters()就是干这个事情的
+		//它会去看你的spring.components文件里的value值里有没有被@Index注解修饰,如果有才能进到if里
 		if (this.componentsIndex != null && indexSupportsIncludeFilters()) {
 			return addCandidateComponentsFromIndex(this.componentsIndex, basePackage);
 		}
@@ -373,21 +380,33 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	private Set<BeanDefinition> addCandidateComponentsFromIndex(CandidateComponentsIndex index, String basePackage) {
 		Set<BeanDefinition> candidates = new LinkedHashSet<>();
 		try {
+			//准备一个集合存放类的全限定性名
 			Set<String> types = new HashSet<>();
+			//循环所有的includeFilters
 			for (TypeFilter filter : this.includeFilters) {
+				//把被includeFilters上定义的某一个注解或者某一个类拿出来
 				String stereotype = extractStereotype(filter);
 				if (stereotype == null) {
 					throw new IllegalArgumentException("Failed to extract stereotype from " + filter);
 				}
+				//index.getCandidateTypes(basePackage, stereotype)方法就会去看
+				//遍历spring.components文件的所有key,判断这些key里有没有既符合在你指定的basePackage包下,同时value又是一个stereotype类型的
+				//如果有,那就把这个key拿出来,加入到候选的set里
 				types.addAll(index.getCandidateTypes(basePackage, stereotype));
 			}
 			boolean traceEnabled = logger.isTraceEnabled();
 			boolean debugEnabled = logger.isDebugEnabled();
+			//遍历类名
 			for (String type : types) {
+				//元数据读取器来读取出class文件
 				MetadataReader metadataReader = getMetadataReaderFactory().getMetadataReader(type);
+				//下面的isCandidateComponent()方法是让这个class经历excludeFilters+includeFilters+@Conditional的检验
 				if (isCandidateComponent(metadataReader)) {
+					//把这个元数据包装成一个BeanDefinition
 					ScannedGenericBeanDefinition sbd = new ScannedGenericBeanDefinition(metadataReader);
+					//设置元数据
 					sbd.setSource(metadataReader.getResource());
+					//下面的isCandidateComponent()方法是让这个class经历第二次检验
 					if (isCandidateComponent(sbd)) {
 						if (debugEnabled) {
 							logger.debug("Using candidate component class from index: " + type);
@@ -485,11 +504,14 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 * @return whether the class qualifies as a candidate component
 	 */
 	protected boolean isCandidateComponent(MetadataReader metadataReader) throws IOException {
+		//如果这个class在排除名单里,则不能创建这个bean,返回false
 		for (TypeFilter tf : this.excludeFilters) {
 			if (tf.match(metadataReader, getMetadataReaderFactory())) {
 				return false;
 			}
 		}
+		//如果这个class在包含名单里,那还要继续校验@Conditional是否符合
+		//isConditionMatch()方法用来解析bean上的@Conditional条件注解
 		for (TypeFilter tf : this.includeFilters) {
 			if (tf.match(metadataReader, getMetadataReaderFactory())) {
 				return isConditionMatch(metadataReader);
@@ -522,6 +544,10 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 */
 	protected boolean isCandidateComponent(AnnotatedBeanDefinition beanDefinition) {
 		AnnotationMetadata metadata = beanDefinition.getMetadata();
+		//这个class
+		//条件1:必须是独立的,不能是内部类
+		//条件2:既不是接口也不是抽象类 或者 是一个抽象类但是这个类里有一个方法被@Lookup注解修饰
+		//符合上面两个条件的beanDefinition才可以创建bean
 		return (metadata.isIndependent() && (metadata.isConcrete() ||
 				(metadata.isAbstract() && metadata.hasAnnotatedMethods(Lookup.class.getName()))));
 	}

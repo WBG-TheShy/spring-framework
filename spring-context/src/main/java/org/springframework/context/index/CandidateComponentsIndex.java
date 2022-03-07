@@ -79,10 +79,13 @@ public class CandidateComponentsIndex {
 	 * or an empty set if none has been found for the specified {@code basePackage}
 	 */
 	public Set<String> getCandidateTypes(String basePackage, String stereotype) {
+		//把value是stereotype的key-value键值对全部拿出来
 		List<Entry> candidates = this.index.get(stereotype);
 		if (candidates != null) {
 			return candidates.parallelStream()
+					//在你指定的包下
 					.filter(t -> t.match(basePackage))
+					//拿出key
 					.map(t -> t.type)
 					.collect(Collectors.toSet());
 		}

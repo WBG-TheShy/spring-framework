@@ -1371,6 +1371,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected RootBeanDefinition getMergedBeanDefinition(
 			String beanName, BeanDefinition bd, @Nullable BeanDefinition containingBd)
 			throws BeanDefinitionStoreException {
+		//beanName,bean名字
+		//bd是通过beanName去找的,有可能是个普通bean,也有可能是个FactoryBean
 
 		synchronized (this.mergedBeanDefinitions) {
 			RootBeanDefinition mbd = null;
