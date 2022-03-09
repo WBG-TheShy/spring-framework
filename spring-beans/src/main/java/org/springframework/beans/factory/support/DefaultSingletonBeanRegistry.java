@@ -413,6 +413,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	public void registerDependentBean(String beanName, String dependentBeanName) {
 		String canonicalName = canonicalName(beanName);
 
+		//dependentBeanMap: key-我 value:我依赖哪些bean
 		synchronized (this.dependentBeanMap) {
 			Set<String> dependentBeans =
 					this.dependentBeanMap.computeIfAbsent(canonicalName, k -> new LinkedHashSet<>(8));
@@ -421,6 +422,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 			}
 		}
 
+		//dependenciesForBeanMap: key-我 value:哪些bean依赖我
 		synchronized (this.dependenciesForBeanMap) {
 			Set<String> dependenciesForBean =
 					this.dependenciesForBeanMap.computeIfAbsent(dependentBeanName, k -> new LinkedHashSet<>(8));
@@ -442,23 +444,34 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	private boolean isDependent(String beanName, String dependentBeanName, @Nullable Set<String> alreadySeen) {
+		//alreadySeen里存放 已经校验过且校验结果为不依赖的beanName
+		//如果已经校验过,那就直接返回false
 		if (alreadySeen != null && alreadySeen.contains(beanName)) {
 			return false;
 		}
+		//获取当前beanName的真正的名字
 		String canonicalName = canonicalName(beanName);
+		//看看当前bean依赖了哪些bean
 		Set<String> dependentBeans = this.dependentBeanMap.get(canonicalName);
+		//没有依赖,则返回false,表示beanName对应的bean不依赖dependentBeanName对应的bean
 		if (dependentBeans == null) {
 			return false;
 		}
+		//如果依赖的bean中有dependentBeanName,那就返回true,证明beanName对应的bean依赖dependentBeanName对应的bean
 		if (dependentBeans.contains(dependentBeanName)) {
 			return true;
 		}
+		//如果依赖的bean中没有dependentBeanName,那就去循环这些依赖的bean,看看这些bean是不是依赖dependentBeanName对应的bean
+		//可以理解为自己不依赖的话就看父依赖们是否依赖dependentBeanName,父依赖们都不依赖,那就看爷依赖们是否依赖dependentBeanName
 		for (String transitiveDependency : dependentBeans) {
 			if (alreadySeen == null) {
 				alreadySeen = new HashSet<>();
 			}
+			//校验一个就添加到集合中,表示已经看过的
 			alreadySeen.add(beanName);
+			//递归去看这个父依赖和dependentBeanName是否依赖
 			if (isDependent(transitiveDependency, dependentBeanName, alreadySeen)) {
+				//如果父亲依赖,那就是孩子依赖,那就返回true
 				return true;
 			}
 		}

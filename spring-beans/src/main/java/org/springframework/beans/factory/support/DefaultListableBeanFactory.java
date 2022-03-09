@@ -934,11 +934,15 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
 			//如果这个bean不是抽象的且是单例的且是非懒加载的,就去创建bean
 			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
-				//如果是一个FactoryBean,则去创建FactoryBean这个bean本身 + 调用FactoryBean的getObject()并扔进单例池里
+				//先去判断是否是一个FactoryBean,Spring会把这个类加载到JVM里,去看它是否实现了FactoryBean接口
 				if (isFactoryBean(beanName)) {
+					//创建FactoryBean这个bean本身
+					//在beanName前面加&是为了获取FactoryBean本身
 					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
+					//如果是一个FactoryBean,调用FactoryBean的getObject()并扔进单例池里
 					if (bean instanceof FactoryBean) {
 						FactoryBean<?> factory = (FactoryBean<?>) bean;
+						//isEagerInit为急切初始化的意思
 						boolean isEagerInit;
 						if (System.getSecurityManager() != null && factory instanceof SmartFactoryBean) {
 							isEagerInit = AccessController.doPrivileged(
@@ -949,6 +953,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							isEagerInit = (factory instanceof SmartFactoryBean &&
 									((SmartFactoryBean<?>) factory).isEagerInit());
 						}
+						//如果急切的想初始化,则去初始化getObject()里面返回的对象
+						//正常情况下,getObject()里的对象是在使用的时候才会去生成
 						if (isEagerInit) {
 							getBean(beanName);
 						}

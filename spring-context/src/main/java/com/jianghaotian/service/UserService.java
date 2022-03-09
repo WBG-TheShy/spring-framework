@@ -1,6 +1,7 @@
 package com.jianghaotian.service;
 
 import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Conditional({})
+@DependsOn({"orderService","userService"})
 public class UserService {
 
 	public void test(){

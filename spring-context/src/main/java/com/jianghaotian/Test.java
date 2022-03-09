@@ -13,7 +13,9 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
  */
 public class Test {
 	public static void main(String[] args) {
+		//Bean的生成过程
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+		//创建bean
 		UserService userService = (UserService) context.getBean("userService");
 		userService.test();
 	}

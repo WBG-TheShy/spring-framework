@@ -276,21 +276,48 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 			//从给定的包路径中获取候选的bean
 			//获取后并不代表他们都有资格成为一个bean,还需要继续筛选
 			Set<BeanDefinition> candidates = findCandidateComponents(basePackage);
+			//遍历每一个候选者
 			for (BeanDefinition candidate : candidates) {
+				//获取这个bean的作用域元数据,包括是单例还是原型,是否需要代理已经代理的类型(JDK,CGLIB)
 				ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(candidate);
+				//设置bean的作用域(getScopeName()是singleton或prototype等等)
 				candidate.setScope(scopeMetadata.getScopeName());
+				//获取这个候选者的名字,如果被Component注解修饰且其中的value有值,则使用value的值,否则就把类的短名字截取出来,然后把首字母小写,将其作为beanName
 				String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
+
 				if (candidate instanceof AbstractBeanDefinition) {
+					//设置默认属性
+					//setLazyInit
+					//setAutowireMode
+					//setDependencyCheck
+					//setInitMethodName
+					//setEnforceInitMethod
+					//setDestroyMethodName
+					//setEnforceDestroyMethod
 					postProcessBeanDefinition((AbstractBeanDefinition) candidate, beanName);
 				}
 				if (candidate instanceof AnnotatedBeanDefinition) {
+					//解析@Lazy,@Primary,@DependsOn,@Role,@Description
+					//并将上述注解的value值set到BeanDefinition里
+					//setLazyInit
+					//setPrimary
+					//setDependsOn
+					//setRole
+					//setDescription
 					AnnotationConfigUtils.processCommonDefinitionAnnotations((AnnotatedBeanDefinition) candidate);
 				}
+				//最后一步,校验是否跟已经定义好的beanDefinition冲突
 				if (checkCandidate(beanName, candidate)) {
+					//将BeanDefinition和beanName封装成一个BeanDefinitionHolder
+					//BeanDefinitionHolder是一个可以指定bean名称和别名的类
+					//如果当前BeanDefinition不关心别名等问题,直接用BeanDefinition即可
 					BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
+					//如果Bean需要代理等(比如这个Bean使用了AOP),那么就生成一个代理BeanDefinition代替原本的BeanDefinition
 					definitionHolder =
 							AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
 					beanDefinitions.add(definitionHolder);
+					//将最终的BeanDefinition注册起来
+					//beanDefinitionMap.put(beanName, BeanDefinition对象)
 					registerBeanDefinition(definitionHolder, this.registry);
 				}
 			}
@@ -335,14 +362,19 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 	 * bean definition has been found for the specified name
 	 */
 	protected boolean checkCandidate(String beanName, BeanDefinition beanDefinition) throws IllegalStateException {
+		//如果当前没有定义过这个beanName,就返回true,代表可以创建这个beanDefinition
 		if (!this.registry.containsBeanDefinition(beanName)) {
 			return true;
 		}
+		//走到这代表定义过这个beanName
+		//那就从容器里拿出来
 		BeanDefinition existingDef = this.registry.getBeanDefinition(beanName);
 		BeanDefinition originatingDef = existingDef.getOriginatingBeanDefinition();
 		if (originatingDef != null) {
 			existingDef = originatingDef;
 		}
+		//看看是否是兼容的,如果是兼容的则返回false,表示既然是兼容的,那就不创建第二遍了
+		//不兼容的返回true,表示可以创建这个beanDefinition
 		if (isCompatible(beanDefinition, existingDef)) {
 			return false;
 		}
@@ -363,6 +395,9 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 	 * new definition to be skipped in favor of the existing definition
 	 */
 	protected boolean isCompatible(BeanDefinition newDefinition, BeanDefinition existingDefinition) {
+		//1.不是扫描出来得到的bean
+		//2.两个beanDefinition对应的文件相同
+		//3.beanDefinition就是同一个
 		return (!(existingDefinition instanceof ScannedGenericBeanDefinition) ||  // explicitly registered overriding bean
 				(newDefinition.getSource() != null && newDefinition.getSource().equals(existingDefinition.getSource())) ||  // scanned same file twice
 				newDefinition.equals(existingDefinition));  // scanned equivalent class twice

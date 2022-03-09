@@ -451,8 +451,12 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			throws BeansException {
 
 		Object result = existingBean;
+		//遍历所有的后置处理器
 		for (BeanPostProcessor processor : getBeanPostProcessors()) {
+			//调用一遍postProcessAfterInitialization
 			Object current = processor.postProcessAfterInitialization(result, beanName);
+			//一旦返回的是null,Spring就会认为程序员已经完成实例化后的操作
+			//所以会直接返回result(注意不是return current 而是return result)
 			if (current == null) {
 				return result;
 			}
@@ -511,9 +515,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Make sure bean class is actually resolved at this point, and
 		// clone the bean definition in case of a dynamically resolved Class
 		// which cannot be stored in the shared merged bean definition.
+		//因为要马上要实例化了,所以要先加载到JVM里,生成Class对象
 		Class<?> resolvedClass = resolveBeanClass(mbd, beanName);
 		if (resolvedClass != null && !mbd.hasBeanClass() && mbd.getBeanClassName() != null) {
 			mbdToUse = new RootBeanDefinition(mbd);
+			//将Class对象设置到beanClass属性里,表示这个bean对应的class已经加载进来了
 			mbdToUse.setBeanClass(resolvedClass);
 		}
 
@@ -528,7 +534,19 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		try {
 			// Give BeanPostProcessors a chance to return a proxy instead of the target bean instance.
+
+			//此时,bean对应的类已经加载进JVM里,接下来就要实例化对象了
+			//所以Spring提供一个扩展:你可以干预实例化bean对象的过程
+			//将bean实现InstantiationAwareBeanPostProcessor接口
+			//重写postProcessBeforeInstantiation方法,表示实例化之前想要做的逻辑
+			//重写postProcessAfterInitialization方法,表示实例化之后想要做的逻辑
+
+
+			//调用实例化前方法:postProcessBeforeInstantiation
+			//如果有必要,则调用实例化后方法:postProcessAfterInitialization
 			Object bean = resolveBeforeInstantiation(beanName, mbdToUse);
+			//而一旦有返回值,则表明程序员自己已经实例化了对象,Spring则认为不需要Spring再进行后续操作了
+			//所以直接可以return
 			if (bean != null) {
 				return bean;
 			}
@@ -539,6 +557,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		try {
+			//重头戏，真正的实例化bean
+			//大概流程:
+			//1.创建 Bean 实例 createBeanInstance方法
+			//2.依赖注入       populateBean方法
+			//3.回调方法       initializeBean方法
 			Object beanInstance = doCreateBean(beanName, mbdToUse, args);
 			if (logger.isTraceEnabled()) {
 				logger.trace("Finished creating instance of bean '" + beanName + "'");
@@ -574,18 +597,37 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			throws BeanCreationException {
 
 		// Instantiate the bean.
+		//BeanWrapper 是一个基础接口，由接口名可看出这个接口的实现类用于包裹 bean 实例。
+		//通过 BeanWrapper 的实现类可以方便的设置/获取 bean 实例的属性
 		BeanWrapper instanceWrapper = null;
+		//如果是单例,先去缓存拿
 		if (mbd.isSingleton()) {
+			//如果bean是单例的，先去删除FactoryBean实例的缓存
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
+
+		//如果返回不是空，则说明删掉了，证明这个bean是FactoryBean
+		//如果返回为空，则证明这不是FactoryBean,是一个普通bean,那就去实例化这个普通bean
 		if (instanceWrapper == null) {
+			//终于开始真正的实例化了
+
+			//创建 bean 实例，并将实例包裹在 BeanWrapper 实现类对象中返回。
+			//createBeanInstance中包含三种创建 bean 实例的方式：
+			//1. 通过工厂方法创建 bean 实例
+			//2. 通过构造方法自动注入（autowire by constructor）的方式创建 bean 实例
+			//3. 通过无参构造方法方法创建 bean 实例
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
+
+		//此时这个bean就是新鲜出炉的bean对象,但是仅仅只是一个空壳,因为里面的属性还都没有赋值
 		Object bean = instanceWrapper.getWrappedInstance();
 		Class<?> beanType = instanceWrapper.getWrappedClass();
 		if (beanType != NullBean.class) {
 			mbd.resolvedTargetType = beanType;
 		}
+		//到这,bean已经实例化了,准备要进入初始化阶段,而初始化需要根据BeanDefinition来进行,因为bean的各种属性都封装在BeanDefinition里
+		//所以Spring在此提供一个扩展,你可以实现MergedBeanDefinitionPostProcessor接口
+		//重写postProcessMergedBeanDefinition()方法,你可以在这个方法里对BeanDefinition进行你要的更改
 
 		// Allow post-processors to modify the merged bean definition.
 		synchronized (mbd.postProcessingLock) {
@@ -1132,8 +1174,12 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			if (!mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
 				Class<?> targetType = determineTargetType(beanName, mbd);
 				if (targetType != null) {
+					//实例化前处理逻辑
 					bean = applyBeanPostProcessorsBeforeInstantiation(targetType, beanName);
+					//如果你的bean返回的不是null,则代表程序员已经自己实例化了一个对象,所以Spring将直接认为你已经实例化好了
+					//既然实例化好了,那就调用实例化后处理逻辑
 					if (bean != null) {
+						//实例化后
 						bean = applyBeanPostProcessorsAfterInitialization(bean, beanName);
 					}
 				}
