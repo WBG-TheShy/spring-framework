@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -552,6 +552,12 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 		}
 
 		if (StompCommand.CONNECT.equals(command) || StompCommand.STOMP.equals(command)) {
+			if (this.connectionHandlers.get(sessionId) != null) {
+				if (logger.isWarnEnabled()) {
+					logger.warn("Ignoring CONNECT in session " + sessionId + ". Already connected.");
+				}
+				return;
+			}
 			if (logger.isDebugEnabled()) {
 				logger.debug(stompAccessor.getShortLogMessage(EMPTY_PAYLOAD));
 			}
@@ -917,7 +923,7 @@ public class StompBrokerRelayMessageHandler extends AbstractBrokerMessageHandler
 
 		/**
 		 * After a DISCONNECT there should be no more client frames so we can
-		 * close the connection pro-actively. However, if the DISCONNECT has a
+		 * close the connection proactively. However, if the DISCONNECT has a
 		 * receipt header we leave the connection open and expect the server will
 		 * respond with a RECEIPT and then close the connection.
 		 * @see <a href="https://stomp.github.io/stomp-specification-1.2.html#DISCONNECT">

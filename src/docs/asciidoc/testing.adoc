@@ -498,7 +498,7 @@ The following example shows such a case:
 [source,java,indent=0,subs="verbatim,quotes",role="primary"]
 .Java
 ----
-	@ContextConfiguration(initializers = CustomContextIntializer.class) // <1>
+	@ContextConfiguration(initializers = CustomContextInitializer.class) // <1>
 	class ContextInitializerTests {
 		// class body...
 	}
@@ -508,7 +508,7 @@ The following example shows such a case:
 [source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
 .Kotlin
 ----
-	@ContextConfiguration(initializers = [CustomContextIntializer::class]) // <1>
+	@ContextConfiguration(initializers = [CustomContextInitializer::class]) // <1>
 	class ContextInitializerTests {
 		// class body...
 	}
@@ -1960,6 +1960,19 @@ example, you can create a custom `@EnabledOnMac` annotation as follows:
 	annotation class EnabledOnMac {}
 ----
 
+[NOTE]
+====
+`@EnabledOnMac` is meant only as an example of what is possible. If you have that exact
+use case, please use the built-in `@EnabledOnOs(MAC)` support in JUnit Jupiter.
+====
+
+[WARNING]
+====
+Since JUnit 5.7, JUnit Jupiter also has a condition annotation named `@EnabledIf`. Thus,
+if you wish to use Spring's `@EnabledIf` support make sure you import the annotation type
+from the correct package.
+====
+
 [[integration-testing-annotations-junit-jupiter-disabledif]]
 ===== `@DisabledIf`
 
@@ -2007,6 +2020,19 @@ example, you can create a custom `@DisabledOnMac` annotation as follows:
 	)
 	annotation class DisabledOnMac {}
 ----
+
+[NOTE]
+====
+`@DisabledOnMac` is meant only as an example of what is possible. If you have that exact
+use case, please use the built-in `@DisabledOnOs(MAC)` support in JUnit Jupiter.
+====
+
+[WARNING]
+====
+Since JUnit 5.7, JUnit Jupiter also has a condition annotation named `@DisabledIf`. Thus,
+if you wish to use Spring's `@DisabledIf` support make sure you import the annotation type
+from the correct package.
+====
 
 [[integration-testing-annotations-meta]]
 ==== Meta-Annotation Support for Testing
@@ -2497,7 +2523,7 @@ listeners. The following listing demonstrates this style of configuration:
 	}
 ----
 
-[source,java,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
 .Kotlin
 ----
 	@ContextConfiguration
@@ -2699,6 +2725,10 @@ If you wish to ensure that a `BeforeTestClassEvent` is always published for ever
 class, you need to register a `TestExecutionListener` that loads the `ApplicationContext`
 in the `beforeTestClass` callback, and that `TestExecutionListener` must be registered
 _before_ the `EventPublishingTestExecutionListener`.
+
+Similarly, if `@DirtiesContext` is used to remove the `ApplicationContext` from the
+context cache after the last test method in a given test class, the `AfterTestClassEvent`
+will not be published for that test class.
 ====
 
 In order to listen to test execution events, a Spring bean may choose to implement the
@@ -5644,7 +5674,6 @@ following example shows the relevant annotations:
 
 [[testcontext-tx-false-positives]]
 .Avoid false positives when testing ORM code
-
 [NOTE]
 =====
 When you test application code that manipulates the state of a Hibernate session or JPA
@@ -5764,6 +5793,86 @@ The following example shows matching methods for JPA:
 
 	// ...
 ----
+=====
+
+[[testcontext-tx-orm-lifecycle-callbacks]]
+.Testing ORM entity lifecycle callbacks
+[NOTE]
+=====
+Similar to the note about avoiding <<testcontext-tx-false-positives, false positives>>
+when testing ORM code, if your application makes use of entity lifecycle callbacks (also
+known as entity listeners), make sure to flush the underlying unit of work within test
+methods that run that code. Failing to _flush_ or _clear_ the underlying unit of work can
+result in certain lifecycle callbacks not being invoked.
+
+For example, when using JPA, `@PostPersist`, `@PreUpdate`, and `@PostUpdate` callbacks
+will not be called unless `entityManager.flush()` is invoked after an entity has been
+saved or updated. Similarly, if an entity is already attached to the current unit of work
+(associated with the current persistence context), an attempt to reload the entity will
+not result in a `@PostLoad` callback unless `entityManager.clear()` is invoked before the
+attempt to reload the entity.
+
+The following example shows how to flush the `EntityManager` to ensure that
+`@PostPersist` callbacks are invoked when an entity is persisted. An entity listener with
+a `@PostPersist` callback method has been registered for the `Person` entity used in the
+example.
+
+[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+.Java
+----
+	// ...
+
+	@Autowired
+	JpaPersonRepository repo;
+
+	@PersistenceContext
+	EntityManager entityManager;
+
+	@Transactional
+	@Test
+	void savePerson() {
+		// EntityManager#persist(...) results in @PrePersist but not @PostPersist
+		repo.save(new Person("Jane"));
+
+		// Manual flush is required for @PostPersist callback to be invoked
+		entityManager.flush();
+
+		// Test code that relies on the @PostPersist callback
+		// having been invoked...
+	}
+
+	// ...
+----
+[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+.Kotlin
+----
+	// ...
+
+	@Autowired
+	lateinit var repo: JpaPersonRepository
+
+	@PersistenceContext
+	lateinit var entityManager: EntityManager
+
+	@Transactional
+	@Test
+	fun savePerson() {
+		// EntityManager#persist(...) results in @PrePersist but not @PostPersist
+		repo.save(Person("Jane"))
+
+		// Manual flush is required for @PostPersist callback to be invoked
+		entityManager.flush()
+
+		// Test code that relies on the @PostPersist callback
+		// having been invoked...
+	}
+
+	// ...
+----
+
+See
+https://github.com/spring-projects/spring-framework/blob/5.3.x/spring-test/src/test/java/org/springframework/test/context/junit/jupiter/orm/JpaEntityListenerTests.java[JpaEntityListenerTests]
+in the Spring Framework test suite for working examples using all JPA lifecycle callbacks.
 =====
 
 
@@ -6855,7 +6964,7 @@ do they involve any of the supporting `@InitBinder`, `@ModelAttribute`, or
 
 The Spring MVC Test framework, also known as `MockMvc`, aims to provide more complete
 testing for Spring MVC controllers without a running server. It does that by invoking
-the `DispacherServlet` and passing
+the `DispatcherServlet` and passing
 <<mock-objects-servlet, "`mock`" implementations of the Servlet API>> from the
 `spring-test` module which replicates the full Spring MVC request handling without
 a running server.
@@ -7258,7 +7367,7 @@ no other expectations will be asserted.
 	import org.springframework.test.web.servlet.get
 
 	mockMvc.get("/accounts/1").andExpect {
-		status().isOk()
+		status { isOk() }
 	}
 ----
 
@@ -7306,7 +7415,7 @@ The following test asserts that binding or validation failed:
 	import org.springframework.test.web.servlet.post
 
 	mockMvc.post("/persons").andExpect {
-		status().isOk()
+		status { isOk() }
 		model {
 			attributeHasErrors("person")
 		}
@@ -7334,7 +7443,7 @@ request. You can do so as follows, where `print()` is a static import from
 	mockMvc.post("/persons").andDo {
 			print()
 		}.andExpect {
-			status().isOk()
+			status { isOk() }
 			model {
 				attributeHasErrors("person")
 			}
@@ -7364,7 +7473,7 @@ other expectations, as the following example shows:
 [source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
 .Kotlin
 ----
-	var mvcResult = mockMvc.post("/persons").andExpect { status().isOk() }.andReturn()
+	var mvcResult = mockMvc.post("/persons").andExpect { status { isOk() } }.andReturn()
 	// ...
 ----
 
@@ -7484,7 +7593,7 @@ or reactive type such as Reactor `Mono`:
 	@Test
 	fun test() {
 		var mvcResult = mockMvc.get("/path").andExpect {
-			status().isOk() // <1>
+			status { isOk() } // <1>
 			request { asyncStarted() } // <2>
 			// TODO Remove unused generic parameter
 			request { asyncResult<Nothing>("body") } // <3>
@@ -7493,7 +7602,7 @@ or reactive type such as Reactor `Mono`:
 
 		mockMvc.perform(asyncDispatch(mvcResult)) // <4>
 				.andExpect {
-					status().isOk() // <5>
+					status { isOk() } // <5>
 					content().string("body")
 				}
 	}

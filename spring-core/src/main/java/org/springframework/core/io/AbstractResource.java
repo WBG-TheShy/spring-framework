@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ public abstract class AbstractResource implements Resource {
 	/**
 	 * This implementation checks whether a File can be opened,
 	 * falling back to whether an InputStream can be opened.
-	 * This will cover both directories and content resources.
+	 * <p>This will cover both directories and content resources.
 	 */
 	@Override
 	public boolean exists() {
@@ -151,7 +151,7 @@ public abstract class AbstractResource implements Resource {
 
 	/**
 	 * This method reads the entire InputStream to determine the content length.
-	 * <p>For a custom sub-class of {@code InputStreamResource}, we strongly
+	 * <p>For a custom subclass of {@code InputStreamResource}, we strongly
 	 * recommend overriding this method with a more optimal implementation, e.g.
 	 * checking File length, or possibly simply returning -1 if the stream can
 	 * only be read once.
