@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Conditional({})
-@DependsOn({"orderService","userService"})
+@DependsOn({})
 public class UserService {
 
 	public void test(){

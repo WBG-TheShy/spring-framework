@@ -85,31 +85,41 @@ abstract class ConfigurationClassUtils {
 	public static boolean checkConfigurationClassCandidate(
 			BeanDefinition beanDef, MetadataReaderFactory metadataReaderFactory) {
 
+		//验证
 		String className = beanDef.getBeanClassName();
 		if (className == null || beanDef.getFactoryMethodName() != null) {
 			return false;
 		}
 
+		//为了保证当前的bean定义是可以支持注解解析的,所以用AnnotationMetadata,表示支持注解解析的元数据
 		AnnotationMetadata metadata;
+		//如果当前的bean定义就是AnnotatedBeanDefinition且类名和元数据的类名相同,那直接把元数据拿过来用就行
 		if (beanDef instanceof AnnotatedBeanDefinition &&
 				className.equals(((AnnotatedBeanDefinition) beanDef).getMetadata().getClassName())) {
 			// Can reuse the pre-parsed metadata from the given BeanDefinition...
+			//直接拿过来用
 			metadata = ((AnnotatedBeanDefinition) beanDef).getMetadata();
 		}
+		//如果你不是AnnotatedBeanDefinition,但是你有bean定义对应的class对象,那么我当场给你生成元数据
 		else if (beanDef instanceof AbstractBeanDefinition && ((AbstractBeanDefinition) beanDef).hasBeanClass()) {
 			// Check already loaded Class if present...
 			// since we possibly can't even load the class file for this Class.
+			//拿到class对象
 			Class<?> beanClass = ((AbstractBeanDefinition) beanDef).getBeanClass();
+			//如果这个class实现了以下4个接口的任何一个,那么它就不支持注解解析,直接返回false
 			if (BeanFactoryPostProcessor.class.isAssignableFrom(beanClass) ||
 					BeanPostProcessor.class.isAssignableFrom(beanClass) ||
 					AopInfrastructureBean.class.isAssignableFrom(beanClass) ||
 					EventListenerFactory.class.isAssignableFrom(beanClass)) {
 				return false;
 			}
+			//根据class对象当场生成一个元数据
 			metadata = AnnotationMetadata.introspect(beanClass);
 		}
+		//如果都不符合,那就,强制解析成支持注解的元数据(根据bean名称),如果解析过程中没有异常,那就没问题,如果有异常,那就证明不支持注解解析,返回false
 		else {
 			try {
+				//强制解析
 				MetadataReader metadataReader = metadataReaderFactory.getMetadataReader(className);
 				metadata = metadataReader.getAnnotationMetadata();
 			}
@@ -118,22 +128,30 @@ abstract class ConfigurationClassUtils {
 					logger.debug("Could not find class file for introspecting configuration annotations: " +
 							className, ex);
 				}
+				//有异常,直接返回false
 				return false;
 			}
 		}
 
+		//从类中取出@Configuration注解
 		Map<String, Object> config = metadata.getAnnotationAttributes(Configuration.class.getName());
+		//如果类中有 @Configuration 注解并且 proxyBeanMethods 属性为 false，则标记配置类为FULL模式 @Configuration(proxyBeanMethods=false)
 		if (config != null && !Boolean.FALSE.equals(config.get("proxyBeanMethods"))) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_FULL);
 		}
+		//要不有@Configuration注解
+		//要不有@Bean(有@Bean修饰的方法),@Component,@ComponentScan,@Import,@ImportResource 这些注解
+		//标记为Lite模式
 		else if (config != null || isConfigurationCandidate(metadata)) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_LITE);
 		}
+		//
 		else {
 			return false;
 		}
 
 		// It's a full or lite configuration candidate... Let's determine the order value, if any.
+		//解析@Order注解,将注解的值扔到bean定义
 		Integer order = getOrder(metadata);
 		if (order != null) {
 			beanDef.setAttribute(ORDER_ATTRIBUTE, order);

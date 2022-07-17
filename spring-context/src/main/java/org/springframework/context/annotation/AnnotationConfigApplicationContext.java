@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 import org.springframework.beans.factory.config.BeanDefinitionCustomizer;
 import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.metrics.StartupStep;
@@ -65,9 +66,31 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * through {@link #register} calls and then manually {@linkplain #refresh refreshed}.
 	 */
 	public AnnotationConfigApplicationContext() {
+		/**
+		 *	先调用父类GenericApplicationContext的构造方法
+		 * 	因为AnnotationConfigApplicationContext本质还是BeanFactory,所以要实例化DefaultListableBeanFactory(注册,获取bean等基础功能)
+		 *  {@link GenericApplicationContext#GenericApplicationContext()}
+		 *
+		 * 再调用GenericApplicationContext父类AbstractApplicationContext的构造方法
+		 * 里面实例化了PathMatchingResourcePatternResolver,这是一个资源读取器,可以根据路径加载资源并封装为Resource对象,在后面会非常有用(例如扫描包路径下的类)
+		 * {@link AbstractApplicationContext#AbstractApplicationContext()}
+		 */
+
 		StartupStep createAnnotatedBeanDefReader = this.getApplicationStartup().start("spring.context.annotated-bean-reader.create");
+		/**
+		 * 接下来实例化两个工具
+		 * 一个是AnnotatedBeanDefinitionReader:可以直接把某个类转换为BeanDefinition，并且会解析该类上的注解(@Conditional,@Scope,@Lazy,@Primary,@DependsOn,@Role,@Description)
+		 * 实例化AnnotatedBeanDefinitionReader的逻辑里,注册了一些spring内部必需的bean
+		 * {@link AnnotationConfigUtils#registerAnnotationConfigProcessors(org.springframework.beans.factory.support.BeanDefinitionRegistry, java.lang.Object)}
+		 */
 		this.reader = new AnnotatedBeanDefinitionReader(this);
 		createAnnotatedBeanDefReader.end();
+		/**
+		 * 另一个是ClassPathBeanDefinitionScanner:用来扫描包路径下的类,并注册到bean工厂中
+		 * Spring默认的扫描器就是ClassPathBeanDefinitionScanner,但不是当前这个对象,而是自己重新又new了一个ClassPathBeanDefinitionScanner
+		 *
+		 * 这里new的scanner仅仅是为了能让程序员可以手动调用{@link #scan(java.lang.String...)}方法而已
+		 */
 		this.scanner = new ClassPathBeanDefinitionScanner(this);
 	}
 
@@ -88,8 +111,16 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * {@link Configuration @Configuration} classes
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
+		//1.实例化注解上下文(注解上下文:有能力处理被注解修饰的组件,且会根据注解信息自动注册bean)
 		this();
+
+		//2.注册组件类(就用上一步实例化的DefaultListableBeanFactory去注册的)
+		/**
+		 * {@link AnnotatedBeanDefinitionReader#doRegisterBean(java.lang.Class, java.lang.String, java.lang.Class[], java.util.function.Supplier, org.springframework.beans.factory.config.BeanDefinitionCustomizer[])}
+		 */
 		register(componentClasses);
+
+		//3.刷新上下文(这里会实例化非懒加载的bean)
 		refresh();
 	}
 
