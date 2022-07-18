@@ -120,7 +120,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 		 */
 		register(componentClasses);
 
-		//3.刷新上下文(这里会实例化非懒加载的bean)
+		//3.刷新上下文(这里会初始化非懒加载的bean)
 		refresh();
 	}
 

@@ -268,9 +268,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 			}
 			//通过bean实例对象获得对象
+			//此时
 			beanInstance = getObjectForBeanInstance(sharedInstance, name, beanName, null);
 		}
-		//如果单例池里没有
+		//如果单例池里没有(一般懒加载的bean的会进入else)
 		else {
 			// Fail if we're already creating this bean instance:
 			// We're assumably within a circular reference.
@@ -356,6 +357,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				//如果是单例的
 				// Create bean instance.
 				if (mbd.isSingleton()) {
+					//外层的getSingleton()方法会在createBean()方法完成后,扔到单例池中
+					//而创建bean
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
 							return createBean(beanName, mbd, args);
@@ -379,6 +382,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						//将该bean设置为创建中
 						beforePrototypeCreation(beanName);
 						//直接创建
+						//因为是原型的,所以创建完并没有扔到单例池里,而是直接返回了
 						prototypeInstance = createBean(beanName, mbd, args);
 					}
 					finally {

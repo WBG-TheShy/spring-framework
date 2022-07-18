@@ -213,8 +213,11 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 */
 	public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
 		Assert.notNull(beanName, "Bean name must not be null");
+		//加锁,防止并发修改
 		synchronized (this.singletonObjects) {
+			//先去单例池中查找是否已经存在该对象
 			Object singletonObject = this.singletonObjects.get(beanName);
+			//如果没有,则创建bean
 			if (singletonObject == null) {
 				if (this.singletonsCurrentlyInDestruction) {
 					throw new BeanCreationNotAllowedException(beanName,
@@ -224,6 +227,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				if (logger.isDebugEnabled()) {
 					logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
 				}
+				//初始化前操作，校验是否 beanName 是否有别的线程在初始化，并记录beanName的初始化状态
 				beforeSingletonCreation(beanName);
 				boolean newSingleton = false;
 				boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
@@ -231,6 +235,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					this.suppressedExceptions = new LinkedHashSet<>();
 				}
 				try {
+					//调用ObjectFactory的getObject方法创建bean(Spring是用的匿名实现类,具体实现为createBean()方法)
 					singletonObject = singletonFactory.getObject();
 					newSingleton = true;
 				}
@@ -254,9 +259,12 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					if (recordSuppressedExceptions) {
 						this.suppressedExceptions = null;
 					}
+					//初始化后的操作:移除初始化状态
 					afterSingletonCreation(beanName);
 				}
+				//如果是新来的
 				if (newSingleton) {
+					//扔到单例池中
 					addSingleton(beanName, singletonObject);
 				}
 			}

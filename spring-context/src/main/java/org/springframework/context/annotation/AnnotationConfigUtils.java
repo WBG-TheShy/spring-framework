@@ -173,6 +173,8 @@ public abstract class AnnotationConfigUtils {
 		/**
 		 * ConfigurationClassPostProcessor(重要!!!)
 		 *
+		 * 是一个BeanDefinitionRegistryPostProcessor(继承BeanFactoryPostProcessor)
+		 *
 		 * ConfigurationClassPostProcessor是一个BeanFactoryPostProcessor,同时也是BeanDefinitionRegistryPostProcessor,那么它发挥作用和执行逻辑就在于两个PostProcessor的方法,分别是
 		 * postProcessBeanFactory()和postProcessBeanDefinitionRegistry(),对于执行优先级后边再分析,那么整个过程中做了哪些事情,发挥了哪些作用呢？
 		 *
@@ -193,7 +195,7 @@ public abstract class AnnotationConfigUtils {
 
 		/**
 		 * AutowiredAnnotationBeanPostProcessor
-		 * 处理@Autowired的，它是一个bean的后置处理器，在bean的属性注入的时候会用到
+		 * 处理@Autowired的，它是一个MergedBeanDefinitionPostProcessor(继承BeanPostProcessor)，在bean的属性注入的时候会用到
 		 */
 		if (!registry.containsBeanDefinition(AUTOWIRED_ANNOTATION_PROCESSOR_BEAN_NAME)) {
 			RootBeanDefinition def = new RootBeanDefinition(AutowiredAnnotationBeanPostProcessor.class);

@@ -955,7 +955,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							isEagerInit = (factory instanceof SmartFactoryBean &&
 									((SmartFactoryBean<?>) factory).isEagerInit());
 						}
-						//如果急切的想初始化,则去初始化getObject()里面返回的对象
+						//如果急切的想初始化,则去初始化getObject()里面返回的对象(getObject()方法是FactoryBean接口里的)
 						//正常情况下,getObject()里的对象是在使用的时候才会去生成
 						if (isEagerInit) {
 							getBean(beanName);

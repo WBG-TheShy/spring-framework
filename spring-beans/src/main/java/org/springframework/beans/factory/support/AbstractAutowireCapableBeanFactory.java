@@ -538,14 +538,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			//此时,bean对应的类已经加载进JVM里,接下来就要实例化对象了
 			//所以Spring提供一个扩展:你可以干预实例化bean对象的过程
 			//将bean实现InstantiationAwareBeanPostProcessor接口
-			//重写postProcessBeforeInstantiation方法,表示实例化之前想要做的逻辑
-			//重写postProcessAfterInitialization方法,表示实例化之后想要做的逻辑
+			//重写postProcessBeforeInstantiation方法,表示实例化之前想要做的逻辑,传入bean的Class类型和bean名称
+			//重写postProcessAfterInitialization方法,表示实例化之后想要做的逻辑,传入实例化好的bean和bean名称
 
 
 			//调用实例化前方法:postProcessBeforeInstantiation
-			//如果有必要,则调用实例化后方法:postProcessAfterInitialization
+			//如果有必要(有必要指的是实例化前的方法就有返回值),则调用实例化后方法:postProcessAfterInitialization
 			Object bean = resolveBeforeInstantiation(beanName, mbdToUse);
-			//而一旦有返回值,则表明程序员自己已经实例化了对象,Spring则认为不需要Spring再进行后续操作了
+			//而一旦有返回值(例如AOP,返回的就是代理对象),则表明程序员自己已经实例化了对象,Spring则认为不需要Spring再进行后续操作了
 			//所以直接可以return
 			if (bean != null) {
 				return bean;
@@ -613,9 +613,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 			//创建 bean 实例，并将实例包裹在 BeanWrapper 实现类对象中返回。
 			//createBeanInstance中包含三种创建 bean 实例的方式：
-			//1. 通过工厂方法创建 bean 实例
-			//2. 通过构造方法自动注入（autowire by constructor）的方式创建 bean 实例
-			//3. 通过无参构造方法方法创建 bean 实例
+			//1. 如果有工厂方法,就通过工厂方法创建 bean 实例
+			//2. 如果没有工厂方法,那就通过构造方法自动注入（autowire by constructor）的方式创建 bean 实例
+			//3. 如果既没有工厂方法,也没有带有参数的构造函数,就通过无参构造方法方法创建 bean 实例
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
 
@@ -627,7 +627,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 		//到这,bean已经实例化了,准备要进入初始化阶段,而初始化需要根据BeanDefinition来进行,因为bean的各种属性都封装在BeanDefinition里
 		//所以Spring在此提供一个扩展,你可以实现MergedBeanDefinitionPostProcessor接口
-		//重写postProcessMergedBeanDefinition()方法,你可以在这个方法里对BeanDefinition进行你要的更改
+		//重写postProcessMergedBeanDefinition()方法,你可以在这个方法里对BeanDefinition进行你要的更改,传入bean定义,bean的Class类型,bean名称
+		//如果你的属性中有被@Autowired注解修饰,Spring会当做是一个注入点,收集所有的注入点,并扔到注入点的缓存里
 
 		// Allow post-processors to modify the merged bean definition.
 		synchronized (mbd.postProcessingLock) {
@@ -645,6 +646,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Eagerly cache singletons to be able to resolve circular references
 		// even when triggered by lifecycle interfaces like BeanFactoryAware.
+		//是否需要把这个bean提前暴露出去(为了解决循环依赖)
 		boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
 				isSingletonCurrentlyInCreation(beanName));
 		if (earlySingletonExposure) {
@@ -652,13 +654,32 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				logger.trace("Eagerly caching bean '" + beanName +
 						"' to allow for resolving potential circular references");
 			}
+			//getEarlyBeanReference()是获取早期对象(如果bean实现了SmartInstantiationAwareBeanPostProcessor接口,那么你可以自己决定这个早期对象的生成逻辑,如果没有实现,那就直接用上面的空壳bean作为早期对象)
+			//addSingletonFactory()方法就会将生成的早期对象扔到单例池中和早期对象池中
 			addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
 		}
 
 		// Initialize the bean instance.
 		Object exposedObject = bean;
 		try {
+			//对bean进行属性填充
+			//如果属性也是一个bean,则会递归进行初始化
+			//大概步骤
+			//1.调用实例化后的回调方法(InstantiationAwareBeanPostProcessor.postProcessAfterInstantiation(),传入空壳bean和bean名称)
+			//2.属性注入,根据注入类型（byType/byName）,提取依赖的bean,统一存入 PropertyValues 中
+			//3.调用属性注入后置处理器(InstantiationAwareBeanPostProcessor.postProcessProperties(),传入PropertyValues对象[属性名和属性值封装成一个对象,多个的这样的对象的集合即PropertyValues],bean实例,bean名称)
+			//    对属性获取完毕填充前，对属性进行再次处理
+			//4.使用 checkDependencies 方法来进行依赖检查
+			//5.将所有解析到的 PropertyValues 中的属性填充至 BeanWrapper 中
 			populateBean(beanName, mbd, instanceWrapper);
+			//初始化bean
+			//大概步骤
+			//1.处理Aware接口
+			//2.执行BeanPostProcessor前置处理(BeanPostProcessor.postProcessBeforeInitialization(),传入bean实例,bean名称)
+			//3.调用自定义的 init 方法
+			//   ①如果Bean实现了InitializingBean接口，执行afeterPropertiesSet()方法
+			//   ②如果Bean在Spring配置文件中配置了 init-method 属性，则会自动调用其配置的初始化方法。
+			//4.执行BeanPostProcessor后置处理(BeanPostProcessor.postProcessAfterInitialization(),传入bean实例,bean名称)
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -671,6 +692,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		//循环依赖检查
+		//此时,当前的bean已经创建完成了,它所依赖的bean也应该创建完成,如果没有创建完成,就报错
 		if (earlySingletonExposure) {
 			Object earlySingletonReference = getSingleton(beanName, false);
 			if (earlySingletonReference != null) {
@@ -678,13 +701,19 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					exposedObject = earlySingletonReference;
 				}
 				else if (!this.allowRawInjectionDespiteWrapping && hasDependentBean(beanName)) {
+					//获取当前bean的依赖的bean们
 					String[] dependentBeans = getDependentBeans(beanName);
 					Set<String> actualDependentBeans = new LinkedHashSet<>(dependentBeans.length);
+					//遍历每一个依赖的bean
 					for (String dependentBean : dependentBeans) {
+						//检查依赖
 						if (!removeSingletonIfCreatedForTypeCheckOnly(dependentBean)) {
 							actualDependentBeans.add(dependentBean);
 						}
 					}
+					// bean 创建后，它所依赖的 bean 一定是已经创建了
+					// 在上面已经找到它有依赖的 bean，如果 actualDependentBeans 不为空
+					// 表示还有依赖的 bean 没有初始化完成，也就是存在循环依赖
 					if (!actualDependentBeans.isEmpty()) {
 						throw new BeanCurrentlyInCreationException(beanName,
 								"Bean with name '" + beanName + "' has been injected into other beans [" +
@@ -700,6 +729,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Register bean as disposable.
 		try {
+			//注册 DisposableBean：这一步是用来处理 DisposableBean接口的destory() + destroy-method 属性，以便在销毁对象时调用。
 			registerDisposableBeanIfNecessary(beanName, bean, mbd);
 		}
 		catch (BeanDefinitionValidationException ex) {
@@ -1176,7 +1206,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				if (targetType != null) {
 					//实例化前处理逻辑
 					bean = applyBeanPostProcessorsBeforeInstantiation(targetType, beanName);
-					//如果你的bean返回的不是null,则代表程序员已经自己实例化了一个对象,所以Spring将直接认为你已经实例化好了
+					//如果你的bean返回的不是null,则代表程序员已经自己实例化了一个对象,所以Spring将直接认为你已经实例化好了(常见的就是AOP,将生成代理对象的逻辑写在实例化前,返回代理对象)
 					//既然实例化好了,那就调用实例化后处理逻辑
 					if (bean != null) {
 						//实例化后
