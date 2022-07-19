@@ -1,5 +1,6 @@
 package com.jianghaotian.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
@@ -13,11 +14,11 @@ import org.springframework.stereotype.Component;
  * @author jianghaotian
  */
 @Component
-@Conditional({})
-@DependsOn({})
 public class UserService {
 
+	private String name;
+
 	public void test(){
-		System.out.println("test");
+		System.out.println("name:"+name);
 	}
 }

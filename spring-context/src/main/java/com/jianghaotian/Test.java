@@ -13,11 +13,15 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
  */
 public class Test {
 	public static void main(String[] args) {
-		//Bean的生成过程
+		//Bean的生命周期
 		//1.扫描 doScan()
-		//2.实例化 createBean()
-		//3.依赖注入 populateBean()
-		//4.初始化 initializeBean()
+		//2.实例化 createBean()--->doCreateBean()---->createBeanInstance()
+		//3.依赖注入 createBean()--->doCreateBean()---->populateBean()
+		//4.初始化 createBean()--->doCreateBean()---->initializeBean()
+		//5.注册销毁 createBean()--->doCreateBean()---->registerDisposableBeanIfNecessary()
+		//6.使用
+		//7.销毁 doClose()---->destroyBeans()
+
 
 		//所有后处理器的执行顺序
 		//-----------------------------------------doScan()-----------------------------------------

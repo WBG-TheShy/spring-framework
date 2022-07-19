@@ -607,6 +607,15 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				 * ④ 最后执行没有实现任何优先级或者是顺序接口的BeanFactoryPostProcessor
 				 *
 				 *
+				 *
+				 * 有一个问题是:既然有BeanFactoryPostProcessor了,为啥还要再搞一个BeanDefinitionRegistryPostProcessor,同时继承它呢?
+				 *
+				 * 因为BeanFactoryPostProcessor的回调方法postProcessBeanFactory(beanFactory),其中入参的beanFactory是ConfigurableListableBeanFactory类型,
+				 * 但这个beanFactory不支持[注册bean定义]这个功能(但是可以拿到bean定义,也就是getBeanDefinition()),因为ConfigurableListableBeanFactory没有实现BeanDefinitionRegistry接口,所以没有注册bean定义的功能
+				 * 所以,Spring就搞了一个BeanDefinitionRegistryPostProcessor,它的回调方法postProcessBeanDefinitionRegistry(registry),其中入参的registry是BeanDefinitionRegistry类型,
+				 * 刚好可以注册bean定义,弥补了ConfigurableListableBeanFactory不能注册bean定义的缺陷
+				 *
+				 *
 				 */
 				invokeBeanFactoryPostProcessors(beanFactory);
 

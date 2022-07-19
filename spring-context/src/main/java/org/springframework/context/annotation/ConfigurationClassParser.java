@@ -249,10 +249,10 @@ class ConfigurationClassParser {
 		}
 
 		// Recursively process the configuration class and its superclass hierarchy.
-		//递归解析配置类，可能配置类有父类。
+		//递归解析配置类，可能配置类的父类也是一个配置类。
 		SourceClass sourceClass = asSourceClass(configClass, filter);
 		do {
-			//真正的解析@Configuration候选者
+			//真正的解析配置类候选者
 			sourceClass = doProcessConfigurationClass(configClass, sourceClass, filter);
 		}
 		while (sourceClass != null);
@@ -276,11 +276,31 @@ class ConfigurationClassParser {
 		//解析@Component注解
 		if (configClass.getMetadata().isAnnotated(Component.class.getName())) {
 			// Recursively process any member (nested) classes first
+			//如果配置类有@Component注解，则解析配置类的内部类，如果有，则递归解析内部类(因为内部类也有可能是一个配置类)。
+			//例如:
+			//@Component
+			//public class AppConfig {
+			//
+			//	@Component
+			//	public class AppConfig2 {
+			//
+			//
+			//	}
+			//}
 			processMemberClasses(configClass, sourceClass, filter);
 		}
 
 		// Process any @PropertySource annotations
 		//解析 @PropertySource 注解配置资源
+		//将properties文件加载到环境变量中,这样可以直接用@Value("${}")来获取属性值
+
+		//例如:
+		//application.properties里有一个配置项：spring.datasource.url=jdbc:mysql://localhost:3306/test
+		//@PropertySource("classpath:application.properties")
+		//就可以直接用@Value("${spring.datasource.url}")来获取属性值
+		//
+		//@Value("${spring.datasource.url}")
+		//private String url;
 		for (AnnotationAttributes propertySource : AnnotationConfigUtils.attributesForRepeatable(
 				sourceClass.getMetadata(), PropertySources.class,
 				org.springframework.context.annotation.PropertySource.class)) {
@@ -303,16 +323,18 @@ class ConfigurationClassParser {
 				// The config class is annotated with @ComponentScan -> perform the scan immediately
 
 				//扫描 @ComponentScan 配置的包(重点!!!)
+				//里面核心就是熟悉的doScan()方法
 				Set<BeanDefinitionHolder> scannedBeanDefinitions =
 						this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName());
 				// Check the set of scanned definitions for any further config classes and parse recursively if needed
 
-				//递归解析扫描出的配置类
+				//递归扫描出的bean定义
 				for (BeanDefinitionHolder holder : scannedBeanDefinitions) {
 					BeanDefinition bdCand = holder.getBeanDefinition().getOriginatingBeanDefinition();
 					if (bdCand == null) {
 						bdCand = holder.getBeanDefinition();
 					}
+					//如果扫描出来的bean定义也是一个配置类,则进行解析
 					if (ConfigurationClassUtils.checkConfigurationClassCandidate(bdCand, this.metadataReaderFactory)) {
 						parse(bdCand.getBeanClassName(), holder.getBeanName());
 					}
@@ -322,10 +344,26 @@ class ConfigurationClassParser {
 
 		// Process any @Import annotations
 		//解析 @Import 注解类
+		//@Import注解会将入参的类注册到bean定义中
+		//注意:@Import 注解解析后生成的bean定义的名字,不是简写类名,而是全限定性类名(因为用到的类名生成器不一样)
+		//例如:
+		//@Import(UserService.class)
+		//那么在获取bean的时候
+		//不能用UserService userService = (UserService) context.getBean("userService");
+		//而是用UserService userService = (UserService) context.getBean("com.jianghaotian.service.UserService");
 		processImports(configClass, sourceClass, getImports(sourceClass), filter, true);
 
 		// Process any @ImportResource annotations
 		//解析  @ImportResource 注解类
+		//专门解析XML文件的,如果你有在XML文件里定义了一些bean标签,想要加入到Spring容器中,就可以使用此注解
+		//例如:
+		//有一个文件applicationContext.xml,里面的内容:
+		//<bean id="dog1" class="com.yangzhenxu.firstspringboot.bean.Dog">
+		//        <property name="name" value="zhangxue"/>
+		//        <property name="age" value="27"/>
+		//</bean>
+		// @ImportResource(locations = "classpath:applicationContext.xml")
+		//这样就可以通过applicationContext.getBean("dog1")获取这个bean了
 		AnnotationAttributes importResource =
 				AnnotationConfigUtils.attributesFor(sourceClass.getMetadata(), ImportResource.class);
 		if (importResource != null) {
@@ -346,6 +384,15 @@ class ConfigurationClassParser {
 
 		// Process default methods on interfaces
 		//解析配置类接口
+		//如果这个配置类实现了一个接口,而这个接口有一个default方法(jdk8新特性),并且用@Bean修饰,那么也会解析这个default方法,将返回值生成一个bean定义
+		//例如:
+		//public interface UserServiceInterface {
+		//
+		//		@Bean
+		//		default UserService getUserService() {
+		//			return new UserService();
+		//		}
+		//}
 		processInterfaces(configClass, sourceClass);
 
 		// Process superclass, if any
@@ -371,26 +418,35 @@ class ConfigurationClassParser {
 	private void processMemberClasses(ConfigurationClass configClass, SourceClass sourceClass,
 			Predicate<String> filter) throws IOException {
 
+		//获取配置类的内部类
 		Collection<SourceClass> memberClasses = sourceClass.getMemberClasses();
 		if (!memberClasses.isEmpty()) {
 			List<SourceClass> candidates = new ArrayList<>(memberClasses.size());
+			//遍历每一个内部类,如果是配置类,则加入到candidates中
+			//这里即使成为了配置类,也会是Lite类型的配置类
 			for (SourceClass memberClass : memberClasses) {
 				if (ConfigurationClassUtils.isConfigurationCandidate(memberClass.getMetadata()) &&
 						!memberClass.getMetadata().getClassName().equals(configClass.getMetadata().getClassName())) {
 					candidates.add(memberClass);
 				}
 			}
+			//排序
 			OrderComparator.sort(candidates);
+			//排好序后,遍历每一个内部类
 			for (SourceClass candidate : candidates) {
+				//如果已经在栈中,则报错(因为循环解析了)
 				if (this.importStack.contains(configClass)) {
 					this.problemReporter.error(new CircularImportProblem(configClass, this.importStack));
 				}
 				else {
+					//压入栈中
 					this.importStack.push(configClass);
 					try {
+						//把内部类转换成配置类,继续解析
 						processConfigurationClass(candidate.asConfigClass(configClass), filter);
 					}
 					finally {
+						//出栈,表示解析结束
 						this.importStack.pop();
 					}
 				}

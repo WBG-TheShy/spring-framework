@@ -91,7 +91,7 @@ abstract class ConfigurationClassUtils {
 			return false;
 		}
 
-		//为了保证当前的bean定义是可以支持注解解析的,所以用AnnotationMetadata,表示支持注解解析的元数据
+		//存储这个bean定义的注解信息(注解元数据)
 		AnnotationMetadata metadata;
 		//如果当前的bean定义就是AnnotatedBeanDefinition且类名和元数据的类名相同,那直接把元数据拿过来用就行
 		if (beanDef instanceof AnnotatedBeanDefinition &&
@@ -135,12 +135,12 @@ abstract class ConfigurationClassUtils {
 
 		//从类中取出@Configuration注解
 		Map<String, Object> config = metadata.getAnnotationAttributes(Configuration.class.getName());
-		//如果类中有 @Configuration 注解并且 proxyBeanMethods 属性为 false，则标记配置类为FULL模式 @Configuration(proxyBeanMethods=false)
+		//如果类中有 @Configuration 注解并且 proxyBeanMethods 属性为 true或null，则标记配置类为FULL模式 @Configuration(proxyBeanMethods=false)
 		if (config != null && !Boolean.FALSE.equals(config.get("proxyBeanMethods"))) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_FULL);
 		}
 		//要不有@Configuration注解
-		//要不有@Bean(有@Bean修饰的方法),@Component,@ComponentScan,@Import,@ImportResource 这些注解
+		//要不有@Bean(有@Bean修饰的方法),@Component,@ComponentScan,@Import,@ImportResource 这些注解的其中一个或多个
 		//标记为Lite模式
 		else if (config != null || isConfigurationCandidate(metadata)) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_LITE);

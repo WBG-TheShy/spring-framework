@@ -379,6 +379,7 @@ final class PostProcessorRegistrationDelegate {
 
 		// Finally, re-register all internal BeanPostProcessors.
 		//对实现了MergedBeanDefinitionPostProcessor接口的BeanPostProcessor也是一样的逻辑,排序后再注册
+		//这也说明了一个事情:只要你实现了MergedBeanDefinitionPostProcessor接口,就算你实现了@PriorityOrdered接口或者@Ordered接口,也会被排序到最后.
 		sortPostProcessors(internalPostProcessors, beanFactory);
 		registerBeanPostProcessors(beanFactory, internalPostProcessors);
 

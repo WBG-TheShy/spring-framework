@@ -558,7 +558,9 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 		AnnotationMetadata metadata = beanDefinition.getMetadata();
 		//这个class
 		//条件1:metadata.isIndependent():必须是独立的,不能是内部类
-		//条件2:metadata.isAbstract():既不是接口也不是抽象类 或者 metadata.isAbstract() && metadata.hasAnnotatedMethods(Lookup.class.getName()):是一个抽象类但是这个类里有一个方法被@Lookup注解修饰
+		//条件2:metadata.isConcrete():既不是接口也不是抽象类
+		// 		或者
+		//     metadata.isAbstract() && metadata.hasAnnotatedMethods(Lookup.class.getName()):是一个抽象类但是这个类里有一个方法被@Lookup注解修饰
 		//符合上面两个条件的beanDefinition才可以创建bean
 		return (metadata.isIndependent() && (metadata.isConcrete() ||
 				(metadata.isAbstract() && metadata.hasAnnotatedMethods(Lookup.class.getName()))));
