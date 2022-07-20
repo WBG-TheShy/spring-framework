@@ -146,14 +146,19 @@ class ConfigurationClassBeanDefinitionReader {
 			return;
 		}
 
+		//如果ConfigurationClass是通过@Import注解导入进来的，则把这个类生成一个 BeanDefinition，同时解析这个类上@Scope,@Lazy等注解信息，并注册BeanDefinition
 		if (configClass.isImported()) {
 			registerBeanDefinitionForImportedConfigurationClass(configClass);
 		}
+
+		//如果ConfigurationClass中存在一些BeanMethod，也就是定义了一些@Bean，那么则解 析这些@Bean，并生成对应的BeanDefinition，并注册
 		for (BeanMethod beanMethod : configClass.getBeanMethods()) {
 			loadBeanDefinitionsForBeanMethod(beanMethod);
 		}
 
+		//如果ConfigurationClass中导入了一些资源文件，比如xx.xml，那么则解析这些xx.xml文 件，得到并注册BeanDefinition
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
+		//如果ConfigurationClass中导入了一些ImportBeanDefinitionRegistrar，那么则执行对应 的registerBeanDefinitions进行BeanDefinition的注册
 		loadBeanDefinitionsFromRegistrars(configClass.getImportBeanDefinitionRegistrars());
 	}
 

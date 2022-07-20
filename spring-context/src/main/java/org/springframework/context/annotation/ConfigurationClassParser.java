@@ -377,6 +377,7 @@ class ConfigurationClassParser {
 
 		// Process individual @Bean methods
 		//解析 @Bean 注解
+		//把这些@Bean方法封装成BeanMethod对象,并放入到configClass的beanMethods属性中
 		Set<MethodMetadata> beanMethods = retrieveBeanMethodMetadata(sourceClass);
 		for (MethodMetadata methodMetadata : beanMethods) {
 			configClass.addBeanMethod(new BeanMethod(methodMetadata, configClass));

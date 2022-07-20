@@ -106,7 +106,7 @@ abstract class ConfigurationClassUtils {
 			// since we possibly can't even load the class file for this Class.
 			//拿到class对象
 			Class<?> beanClass = ((AbstractBeanDefinition) beanDef).getBeanClass();
-			//如果这个class实现了以下4个接口的任何一个,那么它就不支持注解解析,直接返回false
+			//如果这个class实现了以下4个接口的任何一个,那么它就不是配置类,直接返回false
 			if (BeanFactoryPostProcessor.class.isAssignableFrom(beanClass) ||
 					BeanPostProcessor.class.isAssignableFrom(beanClass) ||
 					AopInfrastructureBean.class.isAssignableFrom(beanClass) ||
@@ -135,12 +135,12 @@ abstract class ConfigurationClassUtils {
 
 		//从类中取出@Configuration注解
 		Map<String, Object> config = metadata.getAnnotationAttributes(Configuration.class.getName());
-		//如果类中有 @Configuration 注解并且 proxyBeanMethods 属性为 true或null，则标记配置类为FULL模式 @Configuration(proxyBeanMethods=false)
+		//如果类中有 @Configuration 注解并且 proxyBeanMethods 属性为 true或null，则标记配置类为FULL模式 @Configuration(proxyBeanMethods=true)或@Configuration
 		if (config != null && !Boolean.FALSE.equals(config.get("proxyBeanMethods"))) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_FULL);
 		}
-		//要不有@Configuration注解
-		//要不有@Bean(有@Bean修饰的方法),@Component,@ComponentScan,@Import,@ImportResource 这些注解的其中一个或多个
+		//要不有@Configuration(proxyBeanMethods=false)注解
+		//要不有@Bean(有@Bean修饰的方法),@Component,@ComponentScan,@Import,@ImportResource 这些条件的其中一个或多个
 		//标记为Lite模式
 		else if (config != null || isConfigurationCandidate(metadata)) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_LITE);

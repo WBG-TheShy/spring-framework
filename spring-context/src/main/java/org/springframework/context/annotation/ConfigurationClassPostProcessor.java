@@ -272,12 +272,24 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 	/**
 	 * Build and validate a configuration model based on the registry of
 	 * {@link Configuration} classes.
+	 *
+	 *
+	 *
+	 1. 解析AppConfig类，生成对应的ConfigurationClass
+	 2. 再扫描，扫描到的类都会生成对应的BeanDefinition，并且同时这些类也是ConfigurationClass
+	 3. 再解析ConfigurationClass的其他信息，比如@ImportResource注解的处理，@Import注解的 处理，@Bean注解的处理
 	 */
 	public void processConfigBeanDefinitions(BeanDefinitionRegistry registry) {
 		//候选的配置类集合
 		List<BeanDefinitionHolder> configCandidates = new ArrayList<>();
 
-		//获取bean定义名称
+		//获取bean定义名称(此时,目前只有AppConfig和Spring之前添加过的bean定义)
+		//org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+		//org.springframework.context.annotation.internalAutowiredAnnotationProcessor
+		//org.springframework.context.annotation.internalCommonAnnotationProcessor
+		//org.springframework.context.annotation.internalEventListenerProcessor
+		//org.springframework.context.annotation.internalEventListenerFactory
+		//appConfig
 		String[] candidateNames = registry.getBeanDefinitionNames();
 
 		//循环每一个bean定义名称
@@ -337,8 +349,8 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 		}
 
 		// Parse each @Configuration class
-		//实例化一个@Configuration注解的解析器
-		//里面包含了注解解析工厂，问题广播器，容器环境，资源加载器，通过 @componentScan 注解扫描出 Bean 的名称生成器
+		//实例化一个配置类注解的解析器
+		//里面包含了注解解析工厂，问题广播器，容器环境，资源加载器，通过 @ComponentScan 注解扫描出 Bean 的名称生成器
 		ConfigurationClassParser parser = new ConfigurationClassParser(
 				this.metadataReaderFactory, this.problemReporter, this.environment,
 				this.resourceLoader, this.componentScanBeanNameGenerator, registry);
