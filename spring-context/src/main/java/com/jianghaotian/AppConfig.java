@@ -1,6 +1,7 @@
 package com.jianghaotian;
 
 import com.jianghaotian.interfaces.AppConfigInterface;
+import com.jianghaotian.service.OrderService;
 import com.jianghaotian.service.UserService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -33,14 +34,10 @@ import org.springframework.context.annotation.Import;
 //public class AppConfig {
 //
 //}
-@Configuration
 public class AppConfig{
 
-	@Configuration
-	class AppConfig2{
-		@Bean
-		public UserService userService() {
-			return new UserService();
-		}
+	@Bean
+	public UserService userService() {
+		return new UserService();
 	}
 }

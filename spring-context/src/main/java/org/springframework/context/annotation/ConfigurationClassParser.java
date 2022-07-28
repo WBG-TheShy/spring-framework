@@ -347,7 +347,7 @@ class ConfigurationClassParser {
 		//@Import注解会将入参的类注册到bean定义中
 		//注意:@Import 注解解析后生成的bean定义的名字,不是简写类名,而是全限定性类名(因为用到的类名生成器不一样)
 		//例如:
-		//@Import(UserService.class)
+		//@Import(UserService.class)[注意,即使UserService类没有任何相关的注解,是个空类,Spring也会把它当做配置类来解析,只不过啥也没解析到罢了]
 		//那么在获取bean的时候
 		//不能用UserService userService = (UserService) context.getBean("userService");
 		//而是用UserService userService = (UserService) context.getBean("com.jianghaotian.service.UserService");
@@ -356,6 +356,7 @@ class ConfigurationClassParser {
 		// Process any @ImportResource annotations
 		//解析  @ImportResource 注解类
 		//专门解析XML文件的,如果你有在XML文件里定义了一些bean标签,想要加入到Spring容器中,就可以使用此注解
+		//不过加入到bean定义中不在这里,现在只是加入到配置类的importedResources属性中去
 		//例如:
 		//有一个文件applicationContext.xml,里面的内容:
 		//<bean id="dog1" class="com.yangzhenxu.firstspringboot.bean.Dog">
@@ -641,6 +642,7 @@ class ConfigurationClassParser {
 			this.importStack.push(configClass);
 			try {
 				for (SourceClass candidate : importCandidates) {
+					//如果导入的类实现了ImportSelector接口
 					if (candidate.isAssignable(ImportSelector.class)) {
 						// Candidate class is an ImportSelector -> delegate to it to determine imports
 						Class<?> candidateClass = candidate.loadClass();
@@ -659,6 +661,7 @@ class ConfigurationClassParser {
 							processImports(configClass, currentSourceClass, importSourceClasses, exclusionFilter, false);
 						}
 					}
+					//如果导入的类实现了ImportBeanDefinitionRegistrar接口
 					else if (candidate.isAssignable(ImportBeanDefinitionRegistrar.class)) {
 						// Candidate class is an ImportBeanDefinitionRegistrar ->
 						// delegate to it to register additional bean definitions
@@ -668,11 +671,14 @@ class ConfigurationClassParser {
 										this.environment, this.resourceLoader, this.registry);
 						configClass.addImportBeanDefinitionRegistrar(registrar, currentSourceClass.getMetadata());
 					}
+					//如果什么都没有实现
 					else {
 						// Candidate class not an ImportSelector or ImportBeanDefinitionRegistrar ->
 						// process it as an @Configuration class
+						//压入解析配置类的栈中
 						this.importStack.registerImport(
 								currentSourceClass.getMetadata(), candidate.getMetadata().getClassName());
+						//解析配置类
 						processConfigurationClass(candidate.asConfigClass(configClass), exclusionFilter);
 					}
 				}

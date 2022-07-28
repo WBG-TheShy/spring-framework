@@ -366,8 +366,8 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 			//校验解析是否有错误
 			parser.validate();
 
-			//前面解析配置类，只有 @Configuration 和通过 @ComponentScan 注解扫描出来的类会被注册
-			//其他注解，例如@Import、@Bean，会包装为 ConfigurationClass 类,并在下方手动注册
+			//前面解析配置类，只有通过 @ComponentScan 注解扫描出来的类会被注册
+			//其他注解,例如@Import,@ImportReource,@Bean,会存入 ConfigurationClass 类的对应的属性中,并在下方一起手动注册
 			Set<ConfigurationClass> configClasses = new LinkedHashSet<>(parser.getConfigurationClasses());
 			configClasses.removeAll(alreadyParsed);
 
@@ -386,6 +386,7 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 
 			candidates.clear();
 			//如果解析后的 BeanFactory 是否有增加 BeanDefinition
+			//就比如@ComponentScan扫描出来的新的bean定义就是新增加的BeanDefinition
 			if (registry.getBeanDefinitionCount() > candidateNames.length) {
 				String[] newCandidateNames = registry.getBeanDefinitionNames();
 				Set<String> oldCandidateNames = new HashSet<>(Arrays.asList(candidateNames));

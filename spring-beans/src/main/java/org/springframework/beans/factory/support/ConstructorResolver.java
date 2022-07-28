@@ -127,22 +127,40 @@ class ConstructorResolver {
 	public BeanWrapper autowireConstructor(String beanName, RootBeanDefinition mbd,
 			@Nullable Constructor<?>[] chosenCtors, @Nullable Object[] explicitArgs) {
 
+		//就从入参的chosenCtors里面,选出一个最终的构造方法
+
+		//1. 先检查是否指定了具体的构造方法和构造方法参数值，或者在BeanDefinition中缓存了具体的构造方法或构造方法参数值，如果存在那么则直接使用该构造方法进行实例化
+		//2. 如果没有确定的构造方法或构造方法参数值，那么
+		//	i. 如果没有确定的构造方法，那么则找出类中所有的构造方法
+		//	ii. 如果只有一个无参的构造方法，那么直接使用无参的构造方法进行实例化
+		//	iii. 如果有多个可用的构造方法或者当前Bean需要自动通过构造方法注入
+		//	iv. 根据所指定的构造方法参数值，确定所需要的最少的构造方法参数值的个数
+		//	v. 对所有的构造方法进行排序，参数个数多的在前面
+		//	vi. 遍历每个构造方法
+		//	vii. 如果不是调用getBean方法时所指定的构造方法参数值，那么则根据构造方法参数类型找值
+		//	viii. 如果是调用getBean方法时所指定的构造方法参数值，就直接利用这些值
+		//	ix. 如果根据当前构造方法找到了对应的构造方法参数值，那么这个构造方法就是可用的，但是不一定这个构造方法就是最佳的，所以这里会涉及到是否有多个构造方法匹配了同样的值，这个时候就会用值和构造方法类型进行匹配程度的打分，找到一个最匹配的
 		BeanWrapperImpl bw = new BeanWrapperImpl();
 		this.beanFactory.initBeanWrapper(bw);
 
+		//确定要使用的构造方法
 		Constructor<?> constructorToUse = null;
 		ArgumentsHolder argsHolderToUse = null;
+		//构造方法的入参值
 		Object[] argsToUse = null;
 
+		//如果explicitArgs不为空，表示是通过getBean()方法进行的实例化(explicitArgs即getBean()方法的入参值),那么就直接使用explicitArgs作为构造方法参数值
 		if (explicitArgs != null) {
 			argsToUse = explicitArgs;
 		}
 		else {
 			Object[] argsToResolve = null;
 			synchronized (mbd.constructorArgumentLock) {
+				//缓存中拿构造方法
 				constructorToUse = (Constructor<?>) mbd.resolvedConstructorOrFactoryMethod;
 				if (constructorToUse != null && mbd.constructorArgumentsResolved) {
 					// Found a cached constructor...
+					//缓存中拿构造方法入参值
 					argsToUse = mbd.resolvedConstructorArguments;
 					if (argsToUse == null) {
 						argsToResolve = mbd.preparedConstructorArguments;
@@ -154,12 +172,15 @@ class ConstructorResolver {
 			}
 		}
 
+		//如果构造方法和构造方法入参值有一个没确定
 		if (constructorToUse == null || argsToUse == null) {
 			// Take specified constructors, if any.
 			Constructor<?>[] candidates = chosenCtors;
+			//如果没有候选的构造方法
 			if (candidates == null) {
 				Class<?> beanClass = mbd.getBeanClass();
 				try {
+					//那就从bean中现找出来所有的构造方法
 					candidates = (mbd.isNonPublicAccessAllowed() ?
 							beanClass.getDeclaredConstructors() : beanClass.getConstructors());
 				}
@@ -170,17 +191,23 @@ class ConstructorResolver {
 				}
 			}
 
+			//如果只有一个候选者 且 没有手动指定入参值 且 bean定义中也没有指定构造方法入参值
 			if (candidates.length == 1 && explicitArgs == null && !mbd.hasConstructorArgumentValues()) {
 				Constructor<?> uniqueCandidate = candidates[0];
+				//如果这个构造方法还是无参的
 				if (uniqueCandidate.getParameterCount() == 0) {
+					//那就直接使用这个构造方法
 					synchronized (mbd.constructorArgumentLock) {
+						//缓存构造方法
 						mbd.resolvedConstructorOrFactoryMethod = uniqueCandidate;
 						mbd.constructorArgumentsResolved = true;
 						mbd.resolvedConstructorArguments = EMPTY_ARGS;
 					}
+					//用无参的构造方法去实例化,然后赋值给beanwrapper的属性中
 					bw.setBeanInstance(instantiate(beanName, mbd, uniqueCandidate, EMPTY_ARGS));
 					return bw;
 				}
+				//如果这个构造方法是有参的,那还得去确定入参值,还得继续往下走
 			}
 
 			// Need to resolve the constructor.
@@ -293,6 +320,7 @@ class ConstructorResolver {
 		}
 
 		Assert.state(argsToUse != null, "Unresolved constructor arguments");
+		//将确定好的构造方法和入参值进行实例化,然后赋值给beanwrapper的属性中
 		bw.setBeanInstance(instantiate(beanName, mbd, constructorToUse, argsToUse));
 		return bw;
 	}

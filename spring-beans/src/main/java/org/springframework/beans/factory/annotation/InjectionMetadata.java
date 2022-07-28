@@ -115,7 +115,9 @@ public class InjectionMetadata {
 		Collection<InjectedElement> elementsToIterate =
 				(checkedElements != null ? checkedElements : this.injectedElements);
 		if (!elementsToIterate.isEmpty()) {
+			//遍历注入点
 			for (InjectedElement element : elementsToIterate) {
+				//注入
 				element.inject(target, beanName, pvs);
 			}
 		}
@@ -217,6 +219,8 @@ public class InjectionMetadata {
 		}
 
 		/**
+		 * 这个是给@Resource注入点进行注入
+		 * 给@Autowired注解的注入点注入的代码在子类
 		 * Either this or {@link #getResourceToInject} needs to be overridden.
 		 */
 		protected void inject(Object target, @Nullable String requestingBeanName, @Nullable PropertyValues pvs)
