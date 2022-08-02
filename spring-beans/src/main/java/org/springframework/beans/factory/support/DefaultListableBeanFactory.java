@@ -1304,6 +1304,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	public Object resolveDependency(DependencyDescriptor descriptor, @Nullable String requestingBeanName,
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) throws BeansException {
 
+		//获取方法的入参名字的发现器
+		//JDK1.7拿不到方法名字
+		//JDK1.8以上 且 编译里配置了参数名配置 才能拿到
 		descriptor.initParameterNameDiscovery(getParameterNameDiscoverer());
 		if (Optional.class == descriptor.getDependencyType()) {
 			return createOptionalDependency(descriptor, requestingBeanName);
@@ -1316,6 +1319,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			return new Jsr330Factory().createDependencyProvider(descriptor, requestingBeanName);
 		}
 		else {
+			//在属性上或者set方法的参数上使用了@Lazy注解,那么直接构造一个代理对象返回并赋值到相应字段上(并没有找bean)
+			//但是当进行使用的时候(比如调用了方法),这个代理对象的getTarget()会被调用,而这个getTarget()里的逻辑,才是根据上下文找bean
+			//也就是把找bean的逻辑延后到使用的时候
 			Object result = getAutowireCandidateResolver().getLazyResolutionProxyIfNecessary(
 					descriptor, requestingBeanName);
 			if (result == null) {

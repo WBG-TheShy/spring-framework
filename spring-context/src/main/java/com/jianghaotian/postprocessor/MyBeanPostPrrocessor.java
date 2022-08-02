@@ -22,15 +22,15 @@ public class MyBeanPostPrrocessor implements InstantiationAwareBeanPostProcessor
 
 	@Override
 	public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) throws BeansException {
-		if("userService".equals(beanName)){
-			try {
-				Field field = bean.getClass().getDeclaredField("name");
-				field.setAccessible(true);
-				field.set(bean,"jianghaotian");
-			} catch (IllegalAccessException | NoSuchFieldException e) {
-				e.printStackTrace();
-			}
-		}
+		//if("userService".equals(beanName)){
+		//	try {
+		//		Field field = bean.getClass().getDeclaredField("name");
+		//		field.setAccessible(true);
+		//		field.set(bean,"jianghaotian");
+		//	} catch (IllegalAccessException | NoSuchFieldException e) {
+		//		e.printStackTrace();
+		//	}
+		//}
 		return pvs;
 	}
 }

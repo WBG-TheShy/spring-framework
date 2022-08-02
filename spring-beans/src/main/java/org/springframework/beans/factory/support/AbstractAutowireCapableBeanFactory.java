@@ -1327,6 +1327,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		// Preferred constructors for default construction?
+		//不管
 		ctors = mbd.getPreferredConstructors();
 		if (ctors != null) {
 			return autowireConstructor(beanName, mbd, ctors, null);
@@ -1515,7 +1516,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		//获取当前bean的自动注入模式
 		int resolvedAutowireMode = mbd.getResolvedAutowireMode();
 
-		//如果是BY_NAME或者BY_TYPE
+		//如果是BY_NAME或者BY_TYPE(默认是NO)
 		//相当于
 		//@Bean(autowire = Autowire.BY_NAME/Autowire.BY_TYPE)
 		//public UserService userService(){
@@ -1556,6 +1557,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			//CommonAnnotationBeanPostProcessor处理器用来处理@Resource注解
 			for (InstantiationAwareBeanPostProcessor bp : getBeanPostProcessorCache().instantiationAware) {
 				//调用postProcessProperties方法,传入属性描述器,bean对象,bean名字
+				//注意:此时@Autowired注解的注入点已经赋值了
+				//但是如果你手动在PropertyValues里设置了值 且 有对应的set方法(beanDefinition.getPropertyValues.add("orderService",new OrderService())),那么会在本方法最后一行覆盖掉@Autowired注解已经赋好的值
 				PropertyValues pvsToUse = bp.postProcessProperties(pvs, bw.getWrappedInstance(), beanName);
 				if (pvsToUse == null) {
 					if (filteredPds == null) {
@@ -1577,6 +1580,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		//如果bean定义的propertyValues不为空,那么就设置属性值(也就是说,会覆盖@Autowired注解)
+		//前提是该属性有对应的set方法,如果没有就会报错,并不会忽略
 		if (pvs != null) {
 			//对属性进行赋值(属性名-属性值对应的关系,在bean定义的属性Map,也就是pvs中)
 			applyPropertyValues(beanName, mbd, bw, pvs);

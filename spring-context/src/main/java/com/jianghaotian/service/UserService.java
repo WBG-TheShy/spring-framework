@@ -18,13 +18,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserService {
 
-	private String name;
+	private OrderService orderService;
 
 	public void test(){
-		System.out.println("name:"+name);
+		System.out.println("test方法:"+orderService);
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	@Autowired
+	public void kkk(OrderService orderService) {
+		this.orderService = orderService;
+		System.out.println(orderService);
 	}
 }

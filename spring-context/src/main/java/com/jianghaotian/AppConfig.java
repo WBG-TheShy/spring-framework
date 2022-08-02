@@ -25,19 +25,16 @@ import org.springframework.context.annotation.Import;
 //	}
 //}
 
-//@ComponentScan("com.jianghaotian")
-//public class AppConfig {
-//
-//}
+@ComponentScan("com.jianghaotian")
+public class AppConfig {
+
+}
 
 //@Import(UserService.class)
 //public class AppConfig {
 //
 //}
-public class AppConfig{
-
-	@Bean
-	public UserService userService() {
-		return new UserService();
-	}
-}
+//public class AppConfig{
+//
+//
+//}

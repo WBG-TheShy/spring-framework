@@ -15,7 +15,4 @@ import org.springframework.stereotype.Component;
 @Component
 public class OrderService {
 
-	public OrderService orderService(UserService userService) {
-		return new OrderService();
-	}
 }

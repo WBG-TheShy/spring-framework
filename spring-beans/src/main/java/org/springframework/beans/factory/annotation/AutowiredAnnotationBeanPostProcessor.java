@@ -731,6 +731,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 
 		@Nullable
 		private Object resolveFieldValue(Field field, Object bean, @Nullable String beanName) {
+			//将待注入的字段和required属性封装为一个依赖描述器
 			DependencyDescriptor desc = new DependencyDescriptor(field, this.required);
 			desc.setContainingClass(bean.getClass());
 			Set<String> autowiredBeanNames = new LinkedHashSet<>(1);
@@ -738,6 +739,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			TypeConverter typeConverter = beanFactory.getTypeConverter();
 			Object value;
 			try {
+				//根据字段从上下文中获取bean
 				value = beanFactory.resolveDependency(desc, beanName, autowiredBeanNames, typeConverter);
 			}
 			catch (BeansException ex) {
@@ -793,13 +795,17 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 		 */
 		@Override
 		protected void inject(Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
+			//如果pvs中已经有当前注入点的值,则跳过注入
 			if (checkPropertySkipping(pvs)) {
 				return;
 			}
+			//被@Autowired注解修饰的方法
 			Method method = (Method) this.member;
+			//这个方法的入参值
 			Object[] arguments;
 			if (this.cached) {
 				try {
+					//先去缓存里拿
 					arguments = resolveCachedArguments(beanName);
 				}
 				catch (NoSuchBeanDefinitionException ex) {
@@ -810,9 +816,11 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			else {
 				arguments = resolveMethodArguments(method, bean, beanName);
 			}
+			//如果找到了入参值
 			if (arguments != null) {
 				try {
 					ReflectionUtils.makeAccessible(method);
+					//反射调用
 					method.invoke(bean, arguments);
 				}
 				catch (InvocationTargetException ex) {
@@ -842,12 +850,14 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			Set<String> autowiredBeans = new LinkedHashSet<>(argumentCount);
 			Assert.state(beanFactory != null, "No BeanFactory available");
 			TypeConverter typeConverter = beanFactory.getTypeConverter();
+			//遍历方法上每一个参数,找到匹配的bean对象
 			for (int i = 0; i < arguments.length; i++) {
 				MethodParameter methodParam = new MethodParameter(method, i);
 				DependencyDescriptor currDesc = new DependencyDescriptor(methodParam, this.required);
 				currDesc.setContainingClass(bean.getClass());
 				descriptors[i] = currDesc;
 				try {
+					//上下文中找方法的入参值对应的bean
 					Object arg = beanFactory.resolveDependency(currDesc, beanName, autowiredBeans, typeConverter);
 					if (arg == null && !this.required) {
 						arguments = null;
@@ -860,6 +870,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 				}
 			}
 			synchronized (this) {
+				//如果没缓存过,就去缓存
 				if (!this.cached) {
 					if (arguments != null) {
 						DependencyDescriptor[] cachedMethodArguments = Arrays.copyOf(descriptors, arguments.length);

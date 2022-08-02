@@ -39,7 +39,7 @@ public class Test {
 		//-----------------------------------------populateBean()-----------------------------------------
 		//4. [实例化后]InstantiationAwareBeanPostProcessor.postProcessAfterInstantiation()---基本不用
 		//5. 自动注入---设置对象的属性值(Spring自带的依赖注入,利用setXxx方法,再根据by_name或者by_type)
-		//6. [处理属性回调]InstantiationAwareBeanPostProcessor.postProcessProperties()---对bean的属性进一步处理,包括解析@Autowired,@Resource,@Value等注解
+		//6. [处理属性回调]InstantiationAwareBeanPostProcessor.postProcessProperties()---对bean的属性进一步处理,对@Autowired,@Resource,@Value等标记的注入点进行赋值
 
 		//-----------------------------------------initializeBean()-----------------------------------------
 		//7. Aware对象----各种Aware接口的回调
