@@ -40,6 +40,11 @@ public interface AutowireCandidateResolver {
 	 * @param descriptor the descriptor for the target method parameter or field
 	 * @return whether the bean definition qualifies as autowire candidate
 	 * @see org.springframework.beans.factory.config.BeanDefinition#isAutowireCandidate()
+	 *
+	 *
+	 *
+	 * 本类是一个接口,这是接口的默认方法,而真正Spring用到的是QualifierAnnotationAutowireCandidateResolver类
+	 * 它重写了本方法,当然这个子类重写的方法里会调用本方法,也就是super()
 	 */
 	default boolean isAutowireCandidate(BeanDefinitionHolder bdHolder, DependencyDescriptor descriptor) {
 		return bdHolder.getBeanDefinition().isAutowireCandidate();

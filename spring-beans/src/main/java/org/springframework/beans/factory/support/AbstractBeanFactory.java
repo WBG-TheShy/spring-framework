@@ -581,25 +581,38 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			throws NoSuchBeanDefinitionException {
 
 		String beanName = transformedBeanName(name);
+		//name是否带了 & 前缀符号
 		boolean isFactoryDereference = BeanFactoryUtils.isFactoryDereference(name);
 
 		// Check manually registered singletons.
+		//根据名字从单例池获取bean实例
 		Object beanInstance = getSingleton(beanName, false);
+		//获取到了bean实例
 		if (beanInstance != null && beanInstance.getClass() != NullBean.class) {
+			//bean实例是FactoryBean类型
 			if (beanInstance instanceof FactoryBean) {
+				//没带 & 前缀符号,说明我想要的是getObject()返回的对象
 				if (!isFactoryDereference) {
+					//调用FactoryBean的getObjectType方法,获取getObject()返回的对象的类型
 					Class<?> type = getTypeForFactoryBean((FactoryBean<?>) beanInstance);
+					//如果获取到了,进行匹配,如果是typeToMatch类型,就返回true,不是就返回false
 					return (type != null && typeToMatch.isAssignableFrom(type));
 				}
+				//带了 & 前缀符号, 说明我想要的是FactoryBean本身
 				else {
+					//直接判断这个bean实例是否是typeToMatch类型
 					return typeToMatch.isInstance(beanInstance);
 				}
 			}
+			//如果不是FactoryBean类型
+			//但是你又带了 & 前缀符号
 			else if (!isFactoryDereference) {
+				//直接判断这个bean实例是否是typeToMatch类型
 				if (typeToMatch.isInstance(beanInstance)) {
 					// Direct match for exposed instance?
 					return true;
 				}
+				//如果不是typeToMatch类型,再判断bean对象是否和typeToMatch的泛型类型匹配
 				else if (typeToMatch.hasGenerics() && containsBeanDefinition(beanName)) {
 					// Generics potentially only match on the target class, not on the proxy...
 					RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
@@ -628,6 +641,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			return false;
 		}
 
+		//如果单例池中没有name对应的bean对象,那就只能根据beanDefinition来判断出bean类型了
+
 		// No singleton instance found -> check bean definition.
 		BeanFactory parentBeanFactory = getParentBeanFactory();
 		if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
@@ -636,6 +651,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		// Retrieve corresponding bean definition.
+		//拿到bean定义
 		RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
 		BeanDefinitionHolder dbd = mbd.getDecoratedDefinition();
 
@@ -715,6 +731,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		// If we don't have a bean type, fallback to the predicted type
+		//最终返回是否是typeToMatch类型
 		return typeToMatch.isAssignableFrom(predictedType);
 	}
 

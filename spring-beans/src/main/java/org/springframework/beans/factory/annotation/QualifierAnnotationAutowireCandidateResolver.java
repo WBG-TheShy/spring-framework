@@ -143,10 +143,25 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 	 */
 	@Override
 	public boolean isAutowireCandidate(BeanDefinitionHolder bdHolder, DependencyDescriptor descriptor) {
+		//本类是通过@Qualifiers注解判断是否可以进行依赖注入
+		//本类的父类GenericTypeAwareAutowireCandidateResolver,会去检查泛型相关的信息来进行判断
+		//本类的父类的父类SimpleAutowireCandidateResolver,会根据bean对象的autowireCandidate属性来进行判断
+		//自己判断之前先由上层判断,判断通过再判断自己的,就是责任链设计模式
+
+		//先调用父类的(而父类是一个泛型判断),判断bean的autowireCandidate属性是否是true
 		boolean match = super.isAutowireCandidate(bdHolder, descriptor);
+		//如果是true
 		if (match) {
+			//descriptor.getAnnotations()拿到的是属性和方法入参前面的@Qualifiers(注意,这里是拿不到方法上面的注解的)
+			//例如:
+			//有一个注入点是这样的:
+			//@Qualifiers("a")
+			//private OrderService orderService;
+
+			//这个时候,当前的bean对象,也必须有@Qualifiers("a")这个注解,才能进行依赖注入
 			match = checkQualifiers(bdHolder, descriptor.getAnnotations());
 			if (match) {
+				//方法入参也是一样
 				MethodParameter methodParam = descriptor.getMethodParameter();
 				if (methodParam != null) {
 					Method method = methodParam.getMethod();
@@ -156,6 +171,7 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 				}
 			}
 		}
+		//如果全部都通过,返回true,证明当前的bean对象可以注入进去
 		return match;
 	}
 
