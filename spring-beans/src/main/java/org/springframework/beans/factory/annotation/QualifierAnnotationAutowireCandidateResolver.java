@@ -155,10 +155,19 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 			//descriptor.getAnnotations()拿到的是属性和方法入参前面的@Qualifiers(注意,这里是拿不到方法上面的注解的)
 			//例如:
 			//有一个注入点是这样的:
+			//@Autowired
 			//@Qualifiers("a")
 			//private OrderService orderService;
 
 			//这个时候,当前的bean对象,也必须有@Qualifiers("a")这个注解,才能进行依赖注入
+			//例如:
+			//@Bean
+			//@Qualifier("a")
+			//public OrderService orderService() {
+			//	return new OrderService();
+			//}
+
+			//@Qualifiers起到了筛选的作用
 			match = checkQualifiers(bdHolder, descriptor.getAnnotations());
 			if (match) {
 				//方法入参也是一样
@@ -183,11 +192,14 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 			return true;
 		}
 		SimpleTypeConverter typeConverter = new SimpleTypeConverter();
+		//方法会将注入点上所有的注解都拿到,然后遍历
 		for (Annotation annotation : annotationsToSearch) {
 			Class<? extends Annotation> type = annotation.annotationType();
 			boolean checkMeta = true;
 			boolean fallbackToMeta = false;
+			//如果注入点上面有@Qualifier注解
 			if (isQualifier(type)) {
+				//判断注入点上的@Qualifier注解的值和当前遍历的bean的@Qualifier注解的值是否相等
 				if (!checkQualifier(bdHolder, annotation, typeConverter)) {
 					fallbackToMeta = true;
 				}

@@ -2,6 +2,7 @@ package com.jianghaotian.service;
 
 import org.springframework.beans.factory.annotation.Autowire;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.DependsOn;
@@ -18,15 +19,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class UserService {
 
+	@Autowired
 	private OrderService orderService;
+
+	@Autowired
+	public void setOrderService(OrderService orderService) {
+		this.orderService = orderService;
+	}
 
 	public void test(){
 		System.out.println("test方法:"+orderService);
-	}
-
-	@Autowired
-	public void kkk(OrderService orderService) {
-		this.orderService = orderService;
-		System.out.println(orderService);
 	}
 }

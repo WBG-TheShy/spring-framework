@@ -708,8 +708,10 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 		protected void inject(Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
 			Field field = (Field) this.member;
 			Object value;
+			//如果缓存了注入的bean对象
 			if (this.cached) {
 				try {
+					//就从缓存里拿
 					value = resolvedCachedArgument(beanName, this.cachedFieldValue);
 				}
 				catch (NoSuchBeanDefinitionException ex) {
@@ -734,6 +736,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			//将待注入的字段和required属性封装为一个依赖描述器
 			DependencyDescriptor desc = new DependencyDescriptor(field, this.required);
 			desc.setContainingClass(bean.getClass());
+			//找到的bean对象的名字
 			Set<String> autowiredBeanNames = new LinkedHashSet<>(1);
 			Assert.state(beanFactory != null, "No BeanFactory available");
 			TypeConverter typeConverter = beanFactory.getTypeConverter();
@@ -746,15 +749,18 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 				throw new UnsatisfiedDependencyException(null, beanName, new InjectionPoint(field), ex);
 			}
 			synchronized (this) {
+				//如果没有缓存,则去缓存
 				if (!this.cached) {
 					Object cachedFieldValue = null;
 					if (value != null || this.required) {
 						cachedFieldValue = desc;
+						//注册一下依赖关系
 						registerDependentBeans(beanName, autowiredBeanNames);
 						if (autowiredBeanNames.size() == 1) {
 							String autowiredBeanName = autowiredBeanNames.iterator().next();
 							if (beanFactory.containsBean(autowiredBeanName) &&
 									beanFactory.isTypeMatch(autowiredBeanName, field.getType())) {
+								//将注入点和找到的bean对象封装成一个ShortcutDependencyDescriptor,缓存到注入点的cachedFieldValue属性中
 								cachedFieldValue = new ShortcutDependencyDescriptor(
 										desc, autowiredBeanName, field.getType());
 							}
@@ -805,7 +811,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			Object[] arguments;
 			if (this.cached) {
 				try {
-					//先去缓存里拿
+					//先去缓存里拿(如果给一个原型bean进行注入,会直接用缓存的值)
 					arguments = resolveCachedArguments(beanName);
 				}
 				catch (NoSuchBeanDefinitionException ex) {
