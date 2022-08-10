@@ -114,6 +114,7 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 		 * @return new instance of the dynamically generated subclass
 		 */
 		public Object instantiate(@Nullable Constructor<?> ctor, Object... args) {
+			//生成一个代理类
 			Class<?> subclass = createEnhancedSubclass(this.beanDefinition);
 			Object instance;
 			if (ctor == null) {
@@ -121,7 +122,9 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 			}
 			else {
 				try {
+					//获得代理类的构造方法
 					Constructor<?> enhancedSubclassConstructor = subclass.getConstructor(ctor.getParameterTypes());
+					//根据代理类的构造方法生成一个代理对象
 					instance = enhancedSubclassConstructor.newInstance(args);
 				}
 				catch (Exception ex) {
@@ -133,6 +136,7 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 			// enhanced class (via the Enhancer) in order to avoid memory leaks.
 			Factory factory = (Factory) instance;
 			factory.setCallbacks(new Callback[] {NoOp.INSTANCE,
+					//当执行了有@Lookup注解的方法时,会触发LookupOverrideMethodInterceptor的intercept方法
 					new LookupOverrideMethodInterceptor(this.beanDefinition, this.owner),
 					new ReplaceOverrideMethodInterceptor(this.beanDefinition, this.owner)});
 			return instance;
@@ -235,13 +239,18 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 		@Override
 		public Object intercept(Object obj, Method method, Object[] args, MethodProxy mp) throws Throwable {
 			// Cast is safe, as CallbackFilter filters are used selectively.
+			//找到LookupOverride对象(实例化阶段封装的)
 			LookupOverride lo = (LookupOverride) getBeanDefinition().getMethodOverrides().getOverride(method);
 			Assert.state(lo != null, "LookupOverride not found");
 			Object[] argsToUse = (args.length > 0 ? args : null);  // if no-arg, don't insist on args at all
 			if (StringUtils.hasText(lo.getBeanName())) {
+				//直接从Spring容器中获取bean(bean的名字就是@Lookup注解的Value属性的值)
 				Object bean = (argsToUse != null ? this.owner.getBean(lo.getBeanName(), argsToUse) :
 						this.owner.getBean(lo.getBeanName()));
 				// Detect package-protected NullBean instance through equals(null) check
+				//直接就返回了这个bean
+				//注意,此时并没有执行方法(没有调用method.invoke()),直接返回了这个bean
+				//所以这个方法里的逻辑其实是无所谓的,写什么都可以反正不执行
 				return (bean.equals(null) ? null : bean);
 			}
 			else {

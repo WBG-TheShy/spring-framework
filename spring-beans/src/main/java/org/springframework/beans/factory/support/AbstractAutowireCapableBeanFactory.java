@@ -1433,6 +1433,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 						getAccessControlContext());
 			}
 			else {
+				//getInstantiationStrategy()默认返回的是CglibSubclassingInstantiationStrategy
 				//调用无参构造方法
 				beanInstance = getInstantiationStrategy().instantiate(mbd, beanName, this);
 			}
