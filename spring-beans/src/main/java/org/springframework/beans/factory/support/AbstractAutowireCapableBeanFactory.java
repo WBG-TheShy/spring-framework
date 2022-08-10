@@ -647,6 +647,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Eagerly cache singletons to be able to resolve circular references
 		// even when triggered by lifecycle interfaces like BeanFactoryAware.
 		//是否需要把这个bean提前暴露出去(为了解决循环依赖)
+		//如果当前bean是单例的,并且bean工厂允许循环依赖,并且当前bean是正在创建中的(getSingleton()的时候置为创建中的),那么earlySingletonExposure=true,就表示当前的bean需要解决循环依赖
 		boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
 				isSingletonCurrentlyInCreation(beanName));
 		if (earlySingletonExposure) {
@@ -655,7 +656,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 						"' to allow for resolving potential circular references");
 			}
 			//getEarlyBeanReference()是获取早期对象(如果bean实现了SmartInstantiationAwareBeanPostProcessor接口,那么你可以自己决定这个早期对象的生成逻辑,如果没有实现,那就直接用上面的空壳bean作为早期对象)
-			//addSingletonFactory()方法就会将生成的早期对象扔到单例池中和早期对象池中
+			//addSingletonFactory()方法就会将 生成早期对象的逻辑(注意是逻辑,不是早期对象)扔到singletonFactories中
+			//可能会用到,也可能不会用到
 			addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
 		}
 
@@ -695,6 +697,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		//循环依赖检查
 		//此时,当前的bean已经创建完成了,它所依赖的bean也应该创建完成,如果没有创建完成,就报错
 		if (earlySingletonExposure) {
+			//如果bean已经经历过AOP,则初始化后并不会进行AOP操作,但是目前的bean不是代理对象,代理对象是在二级缓存中,所以还是得去二级缓存中拿到代理对象
 			Object earlySingletonReference = getSingleton(beanName, false);
 			if (earlySingletonReference != null) {
 				if (exposedObject == bean) {
@@ -1054,6 +1057,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		Object exposedObject = bean;
 		if (!mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
 			for (SmartInstantiationAwareBeanPostProcessor bp : getBeanPostProcessorCache().smartInstantiationAware) {
+				//AbstractAutoProxyCreator这个类实现了SmartInstantiationAwareBeanPostProcessor接口
 				exposedObject = bp.getEarlyBeanReference(exposedObject, beanName);
 			}
 		}

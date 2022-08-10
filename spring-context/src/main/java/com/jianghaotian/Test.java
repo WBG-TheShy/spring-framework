@@ -4,6 +4,7 @@ import com.jianghaotian.service.UserService;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
  * 描述:
@@ -13,6 +14,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
  *
  * @author jianghaotian
  */
+@EnableAspectJAutoProxy
 public class Test {
 	public static void main(String[] args) {
 		//Bean的生命周期
@@ -33,6 +35,18 @@ public class Test {
 				//解析配置类(配置类:类上有@Component,@PropertySource,@ComponentScan,@Import,@ImportResource至少一个,方法上有@Bean)
 				//a.@Component:检查内部类是不是配置类,如果是,则解析它
 				//b.@ComponentScan:扫描并注册bean定义(扫描的过程中,如果发现扫描出来的也是配置类,则解析它)
+					//核心方法doScan()
+					//b1. 首先，通过ResourcePatternResolver获得指定包路径下的所有.class文件(Spring源码中将 此文件包装成了Resource对象)
+					//b2. 遍历每个Resource对象
+					//b3. 利用MetadataReaderFactory解析Resource对象得到MetadataReader(在Spring源码中 MetadataReaderFactory具体的实现类为CachingMetadataReaderFactory， MetadataReader的具体实现类为SimpleMetadataReader)
+						//值得注意的是，CachingMetadataReaderFactory解析某个.class文件得到MetadataReader对象是利用的ASM技术，并没有加载这个类到JVM。
+					//b4. 利用MetadataReader进行excludeFilters和includeFilters，以及条件注解@Conditional的筛选 (条件注解并不能理解:某个类上是否存在@Conditional注解，如果存在则调用注解中所指定 的类的match方法进行匹配，匹配成功则通过筛选，匹配失败则pass掉。)
+					//b5. 筛选通过后，基于metadataReader生成ScannedGenericBeanDefinition
+						//最终得到的ScannedGenericBeanDefinition对象，beanClass属性存储的是当前类的名字，而不是class对象。(beanClass属性的类型是Object，它即可以存储类的名字，也可以存储class对象)
+					//b6. 再基于metadataReader判断是不是对应的类是不是接口或抽象类
+					//b7. 为每个bean定义生成beanName
+					//b8. 给bean定义的一些属性赋默认值(包括解析@Lazy,@Primary,@DependsOn,@Order,@Scope)
+					//b7. 注册beanName+bean定义到Spring容器中
 				//c.@Import:调用processImports()方法
 					//c1.导入的是ImportSelector类型:那么调用执行selectImports方法得到类名，然后在把这个类当做配置类进行解析
 					//c2.导入的是ImportBeanDefinitionRegis类型:那么则生成一个ImportBeanDefinitionRegistrar实例对象，并添加到配置类对象中(ConfigurationClass)的importBeanDefinitionRegistrars属性中
@@ -101,7 +115,7 @@ public class Test {
 				//b9. 如果根据当前构造方法找到了对应的构造方法参数值，那么这个构造方法就是可用的，但是不一定这个构造方法就是最佳的，所以这里会涉及到是否有多个构造方法匹配了同样的值，
 				// 	  这个时候就会用值和构造方法类型进行匹配程度的打分，找到一个最匹配的
 
-
+			//如果实例化时出现循环依赖,则无法解决
 		//3. [对bean定义进行额外的处理]MergedBeanDefinitionPostProcessor.postProcessMergedBeanDefinition()---查找@Autowired的注入点并缓存
 			//只要属性或方法上有@Autowired,@Value,@Inject注解,Spring会将其封装为一个注入点(忽略static修饰的),并缓存到bean定义中
 
@@ -146,6 +160,8 @@ public class Test {
 			//	为什么缓存的是bean名字而不直接缓存bean对象呢?
 			//	因为找到的bean对象也有可能是原型的,要保证每次赋的值都是不一样的,所以要通过bean名字重新getBean获取对象,而不能缓存获取对象(缓存的话每次都是一样的bean对象,不符合原型的要求)
 			//i.利用反射进行属性赋值或方法调用
+
+			//属性注入的时候出现循环依赖,则使用到三级缓存来解决
 		//-----------------------------------------initializeBean()-----------------------------------------
 		//7. Aware对象----各种Aware接口的回调
 		//8. [初始化前]BeanPostProcessor.postProcessBeforeInitialization()----执行@PostConstruct方法,另一些Aware接口的回调

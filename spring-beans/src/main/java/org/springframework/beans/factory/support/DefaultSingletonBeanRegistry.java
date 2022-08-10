@@ -179,20 +179,34 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	@Nullable
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 		// Quick check for existing instance without full singleton lock
+		//先去一级缓存:singletonObjects-单例池里拿
 		Object singletonObject = this.singletonObjects.get(beanName);
+		//如果没有从一级缓存里拿到,并且当前要拿的bean正在创建
 		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
+			//再去二级缓存:earlySingletonObjects-原始对象单例池里拿
 			singletonObject = this.earlySingletonObjects.get(beanName);
+			//如果拿到了并且允许返回原始对象
 			if (singletonObject == null && allowEarlyReference) {
+				//锁住单例池
 				synchronized (this.singletonObjects) {
 					// Consistent creation of early reference within full singleton lock
+					//再从一级缓存里拿
 					singletonObject = this.singletonObjects.get(beanName);
+					//一级缓存拿不到
 					if (singletonObject == null) {
+						//再从二级缓存里拿
 						singletonObject = this.earlySingletonObjects.get(beanName);
+						//二级缓存也拿不到
 						if (singletonObject == null) {
+							//去三级缓存里拿(这里拿出来的不是对象,而是拿出来一个创建原始对象(或代理对象)的工厂)
 							ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
+							//这里一般情况下都不为null(Spring会在doCreateBean()方法中添加这个工厂),除非你手动设置上下文不支持循环依赖
 							if (singletonFactory != null) {
+								//这个工厂的getObject()方法会创建原始对象(或代理对象)
 								singletonObject = singletonFactory.getObject();
+								//拿到原始对象,放入到二级缓存中
 								this.earlySingletonObjects.put(beanName, singletonObject);
+								//删除三级缓存中的值,可以理解为不需要了,因为值已经在二级缓存中有了,其他想要用可以直接从二级缓存中拿
 								this.singletonFactories.remove(beanName);
 							}
 						}
