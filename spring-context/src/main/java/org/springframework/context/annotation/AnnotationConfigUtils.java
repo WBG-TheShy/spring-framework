@@ -164,6 +164,7 @@ public abstract class AnnotationConfigUtils {
 				 * 提供延迟加载的功能
 				 * 当Bean上有@Lazy注解时, 就会延迟加载
 				 */
+				//判断一个bean是否可以用来进行依赖注入的处理器
 				beanFactory.setAutowireCandidateResolver(new ContextAnnotationAutowireCandidateResolver());
 			}
 		}

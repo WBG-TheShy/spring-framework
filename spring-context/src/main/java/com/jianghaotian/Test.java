@@ -125,7 +125,7 @@ public class Test {
 			//a.xml配置的的依赖注入
 				//a1. byType(根据setXxx的xxx类型注入)
 				//a2. byName(根据setXxx的xxx名字注入)
-				//a3. constructor(spring利用构造方法的参数信息从Spring容器中去找bean，找到bean之后作为参数传给构造方法，从而实例化 得到一个bean对象，并完成属性赋值(属性赋值的代码得程序员来写))
+				//a3. constructor(spring利用构造方法的参数信息从Spring容器中去找bean，找到bean之后作为参数传给构造方法，从而实例化得到一个bean对象，并完成属性赋值(属性赋值的代码得程序员来写))
 				//a4. default
 				//a5. no(不使用自动注入,默认就是no)
 			//b.@Bean注解的依赖注入

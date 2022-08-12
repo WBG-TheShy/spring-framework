@@ -551,7 +551,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			// Prepare this context for refreshing.
 			//刷新前的预处理
 			//（1）initPropertySources()：初始化一些属性设置，子类自定义个性化的属性设置方法；
-			//（2）getEnvironment().validateRequiredProperties()：检验属性的合法性
+			//（2）getEnvironment().validateRequiredProperties()：检验必要属性是否存在
 			//（3）earlyApplicationEvents = new LinkedHashSet<ApplicationEvent>()：保存容器中的一些早期的事件；
 			prepareRefresh();
 
@@ -625,7 +625,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				//（2）先注册实现了PriorityOrdered优先级接口的BeanPostProcessor；
 				//（3）再注册实现了Ordered优先级接口的BeanPostProcessor；
 				//（4）最后注册没有实现任何优先级接口的BeanPostProcessor；
-				//（5）最r终注册MergedBeanDefinitionPostProcessor类型的BeanPostProcessor：beanFactory.addBeanPostProcessor(postProcessor);
+				//（5）最终注册MergedBeanDefinitionPostProcessor类型的BeanPostProcessor：beanFactory.addBeanPostProcessor(postProcessor);
 				//（6）给容器注册一个ApplicationListenerDetector：用于在Bean创建完成后检查是否是ApplicationListener，如果是，就把Bean放到容器中保存起来：applicationContext.addApplicationListener((ApplicationListener<?>) bean);
 				//此时容器中默认有6个默认的BeanProcessor(无任何代理模式下)：
 				// 【ApplicationContextAwareProcessor】
@@ -644,7 +644,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				initMessageSource();
 
 				// Initialize event multicaster for this context.
-				//初始化事件派发器，在注册监听器时会用到
+				//初始化事件发布器，在注册监听器时会用到
 				//（1）看BeanFactory容器中是否存在自定义的ApplicationEventMulticaster：如果有，直接从容器中获取；如果没有，则创建一个SimpleApplicationEventMulticaster
 				//（2）将创建的ApplicationEventMulticaster添加到BeanFactory中，以后其他组件就可以直接自动注入
 				initApplicationEventMulticaster();
@@ -723,13 +723,19 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Initialize any placeholder property sources in the context environment.
+		//这里没有实现,交给子类去重写
+		//例如:AbstractRefreshableWebApplicationContext就重写了此方法
+		//这个类是SpringMVC框架用到的,它将servletContext中的参数键值对设置到Environment中
+		//这里就是用到了模版设计模式
 		initPropertySources();
 
 		// Validate that all properties marked as required are resolvable:
 		// see ConfigurablePropertyResolver#setRequiredProperties
+		//验证环境变量里有没有必须要的键值对
 		getEnvironment().validateRequiredProperties();
 
 		// Store pre-refresh ApplicationListeners...
+		//监听器相关
 		if (this.earlyApplicationListeners == null) {
 			this.earlyApplicationListeners = new LinkedHashSet<>(this.applicationListeners);
 		}
@@ -774,20 +780,31 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		//设置类加载器
 		beanFactory.setBeanClassLoader(getClassLoader());
 		if (!shouldIgnoreSpel) {
-			//设置bean表达式解析器
+			//设置SpringEL表达式解析器
 			beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
 		}
+		//注册类型转换器(String转成Class,File等等)
 		beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
 
 		// Configure the bean factory with context callbacks.
-		//添加一个bean后置处理器,用于初始化前回传一些信息
+		//添加一个BeanPostProcessor,用于处理EnvironmentAware,EmbeddedValueResolverAware等回调
 		beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
 
 		//Spring会忽略这些接口的依赖注入
 		//例如:如果你的bean里这样声明一个属性
-		//	@Autowired
+		//public class OrderService implements EnvironmentAware{
 		//	private EnvironmentAware environmentAware;
-		//Spring是不会给你注入的
+		//
+		//  @Override
+		//  public void setEnvironmentAware(EnvironmentAware environmentAware) {
+		//  	this.environmentAware = environmentAware;
+		//  }
+		//}
+		//并且你OrderService设置了bean的注入方式@Bean(autowired = Autowired.BY_NAME)
+		//正常情况下,属性注入会调一次这个方法,Aware回调又会调一次这个方法
+		//为了避免出现调用两次的情况
+		//Spring提供了一个ignoreDependencyInterface属性
+		//只要设置进去,Spring在属性注入的时候是不会管的(是Spring默认的自动注入,如果是@AutoWired,依然会调用两次),只保留Aware回调的那一次
 		beanFactory.ignoreDependencyInterface(EnvironmentAware.class);
 		beanFactory.ignoreDependencyInterface(EmbeddedValueResolverAware.class);
 		beanFactory.ignoreDependencyInterface(ResourceLoaderAware.class);
@@ -799,8 +816,14 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// BeanFactory interface not registered as resolvable type in a plain factory.
 		// MessageSource registered (and found for autowiring) as a bean.
 		//相反,Spring会对这些接口进行依赖注入,即使代码里没有显式的把它们注册到bean工厂里
-		//第一个参数:你的属性如果实现的接口
+		//第一个参数:你的属性如果是这个类型
 		//第二个参数:Spring在属性注入的时候,具体注入的值
+		//例如:我们程序员并没有显式的创建ApplicationContext这个bean
+		//但是依然可以使用自动注入的方式来获得ApplicationContext
+		//例如:
+		//@Autowired
+		//private ApplicationContext applicationContext;
+		//这是可以正常注入的
 		beanFactory.registerResolvableDependency(BeanFactory.class, beanFactory);
 		beanFactory.registerResolvableDependency(ResourceLoader.class, this);
 		beanFactory.registerResolvableDependency(ApplicationEventPublisher.class, this);
@@ -823,15 +846,15 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		if (!beanFactory.containsLocalBean(ENVIRONMENT_BEAN_NAME)) {
 			beanFactory.registerSingleton(ENVIRONMENT_BEAN_NAME, getEnvironment());
 		}
-		//注册systemProperties为单例bean 类型为Map<String, Object>
+		//注册systemProperties(操作系统的环境变量)为单例bean 类型为Map<String, Object>
 		if (!beanFactory.containsLocalBean(SYSTEM_PROPERTIES_BEAN_NAME)) {
 			beanFactory.registerSingleton(SYSTEM_PROPERTIES_BEAN_NAME, getEnvironment().getSystemProperties());
 		}
-		//注册systemEnvironment为单例bean，类型是【Map<String, Object>】
+		//注册systemEnvironment(JVM的环境变量)为单例bean，类型是【Map<String, Object>】
 		if (!beanFactory.containsLocalBean(SYSTEM_ENVIRONMENT_BEAN_NAME)) {
 			beanFactory.registerSingleton(SYSTEM_ENVIRONMENT_BEAN_NAME, getEnvironment().getSystemEnvironment());
 		}
-		//注册applicationStartup为单例bean,类型是DefaultApplicationStartup
+		//注册applicationStartup(监控)为单例bean,类型是DefaultApplicationStartup
 		if (!beanFactory.containsLocalBean(APPLICATION_STARTUP_BEAN_NAME)) {
 			beanFactory.registerSingleton(APPLICATION_STARTUP_BEAN_NAME, getApplicationStartup());
 		}
@@ -1042,12 +1065,15 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		clearResourceCaches();
 
 		// Initialize lifecycle processor for this context.
+		//bean有生命周期,而Spring也有生命周期
+		//一个类实现SmartLifecycle接口,则Spring会在启动,停止,运行的时候回调其中的方法
 		initLifecycleProcessor();
 
 		// Propagate refresh to lifecycle processor first.
 		getLifecycleProcessor().onRefresh();
 
 		// Publish the final event.
+		//发布上下文关闭事件
 		publishEvent(new ContextRefreshedEvent(this));
 
 		// Participate in LiveBeansView MBean, if active.
