@@ -1,6 +1,7 @@
-package com.jianghaotian.interfaces;
+package com.jianghaotian.spring.interfaces;
 
-import com.jianghaotian.service.UserService;
+
+import com.jianghaotian.spring.service.UserService;
 import org.springframework.context.annotation.Bean;
 
 /**

@@ -1,13 +1,9 @@
-package com.jianghaotian.postprocessor;
+package com.jianghaotian.spring.postprocessor;
 
-import com.jianghaotian.service.UserService;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.PropertyValue;
 import org.springframework.beans.PropertyValues;
 import org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor;
 import org.springframework.stereotype.Component;
-
-import java.lang.reflect.Field;
 
 /**
  * 描述:

@@ -1,4 +1,4 @@
-package com.jianghaotian.service;
+package com.jianghaotian.spring.service;
 
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.stereotype.Component;

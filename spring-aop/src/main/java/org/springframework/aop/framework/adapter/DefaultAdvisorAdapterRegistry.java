@@ -77,7 +77,10 @@ public class DefaultAdvisorAdapterRegistry implements AdvisorAdapterRegistry, Se
 
 	@Override
 	public MethodInterceptor[] getInterceptors(Advisor advisor) throws UnknownAdviceTypeException {
+		//方法目的是将Advisor里的Advice转换成MethodInterceptor
+
 		List<MethodInterceptor> interceptors = new ArrayList<>(3);
+		//从Advisor里获取Advice
 		Advice advice = advisor.getAdvice();
 		if (advice instanceof MethodInterceptor) {
 			interceptors.add((MethodInterceptor) advice);

@@ -54,6 +54,10 @@ public class DefaultAopProxyFactory implements AopProxyFactory, Serializable {
 
 	@Override
 	public AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException {
+		//1.ProxyFactory的isOptimize=true(isOptimize=true的意思是Spring认为cglib比jdk动态代理要快)
+		//2.ProxyFactory的isProxyTargetClass=true(isProxyTargetClass=true表示程序员想代理一个类,而不是接口)
+		//3.被代理对象没有实现接口
+		//4.或者只实现了SpringProxy接口
 		if (!NativeDetector.inNativeImage() &&
 				(config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config))) {
 			Class<?> targetClass = config.getTargetClass();
@@ -61,11 +65,15 @@ public class DefaultAopProxyFactory implements AopProxyFactory, Serializable {
 				throw new AopConfigException("TargetSource cannot determine target class: " +
 						"Either an interface or a target is required for proxy creation.");
 			}
+			//1.被代理的类是一个接口
+			//2.进行过JDK动态代理生成的代理对象
+			//上述条件满足一个,则进行JDK动态代理
 			if (targetClass.isInterface() || Proxy.isProxyClass(targetClass) || ClassUtils.isLambdaClass(targetClass)) {
 				return new JdkDynamicAopProxy(config);
 			}
 			return new ObjenesisCglibAopProxy(config);
 		}
+		//其他情况都是JDK动态代理,比如被代理类实现了非SpringProxy的接口
 		else {
 			return new JdkDynamicAopProxy(config);
 		}

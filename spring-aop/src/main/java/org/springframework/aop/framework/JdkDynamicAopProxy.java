@@ -160,14 +160,19 @@ final class JdkDynamicAopProxy implements AopProxy, InvocationHandler, Serializa
 		Object oldProxy = null;
 		boolean setProxyContext = false;
 
+		//将ProxyFactory的targetSource拿出来
 		TargetSource targetSource = this.advised.targetSource;
 		Object target = null;
 
+
+		//如果执行的是equals()方法或者hasCode()方法,则不进行代理
 		try {
+			//如果当前执行的是 equals()方法, 并且你的代理类没有实现equals()方法, 那么直接调用代理类的equals()方法
 			if (!this.equalsDefined && AopUtils.isEqualsMethod(method)) {
 				// The target does not implement the equals(Object) method itself.
 				return equals(args[0]);
 			}
+			//如果当前执行的是 hashCode()方法, 并且你的代理类没有实现hashCode()方法, 那么直接调用代理类的hashCode()方法
 			else if (!this.hashCodeDefined && AopUtils.isHashCodeMethod(method)) {
 				// The target does not implement the hashCode() method itself.
 				return hashCode();
@@ -184,6 +189,8 @@ final class JdkDynamicAopProxy implements AopProxy, InvocationHandler, Serializa
 
 			Object retVal;
 
+			//如果proxyFactory的exposeProxy=true,则将代理对象扔到当前线程的ThreadLocal里
+			//拿的时候可以通过AopContext.currentProxy()来获取
 			if (this.advised.exposeProxy) {
 				// Make invocation available if necessary.
 				oldProxy = AopContext.setCurrentProxy(proxy);
@@ -192,26 +199,34 @@ final class JdkDynamicAopProxy implements AopProxy, InvocationHandler, Serializa
 
 			// Get as late as possible to minimize the time we "own" the target,
 			// in case it comes from a pool.
+			//调用targetSource的getTarget()方法,获取代理对象
 			target = targetSource.getTarget();
 			Class<?> targetClass = (target != null ? target.getClass() : null);
 
 			// Get the interception chain for this method.
+			//代理类在执行方法的时候,根据方法筛选出匹配的Advice们(例如:execution(* com.jianghaotian.aop.service.PersonService.test())),并适配成MethodInterceptor
+			//一个方法可能会有多个Advice,每个Advice都是一个MethodInterceptor,所以会形成一个Advice链
 			List<Object> chain = this.advised.getInterceptorsAndDynamicInterceptionAdvice(method, targetClass);
 
 			// Check whether we have any advice. If we don't, we can fall back on direct
 			// reflective invocation of the target, and avoid creating a MethodInvocation.
+			//如果是空的,表示没有找到匹配的代理逻辑链
 			if (chain.isEmpty()) {
 				// We can skip creating a MethodInvocation: just invoke the target directly
 				// Note that the final invoker must be an InvokerInterceptor so we know it does
 				// nothing but a reflective operation on the target, and no hot swapping or fancy proxying.
 				Object[] argsToUse = AopProxyUtils.adaptArgumentsIfNecessary(method, args);
+				//直接执行被代理对象的方法
 				retVal = AopUtils.invokeJoinpointUsingReflection(target, method, argsToUse);
 			}
 			else {
+				//如果找到了代理逻辑链
 				// We need to create a method invocation...
+				//把代理对象,被代理对象,当前执行的方法,方法入参,被代理对象的类型,切面逻辑链封装成一个MethodInvocation对象
 				MethodInvocation invocation =
 						new ReflectiveMethodInvocation(proxy, target, method, args, targetClass, chain);
 				// Proceed to the joinpoint through the interceptor chain.
+				//依次执行链中的逻辑
 				retVal = invocation.proceed();
 			}
 

@@ -349,7 +349,7 @@ class ConfigurationClassParser {
 		//@Import(UserService.class)[注意,即使UserService类没有任何相关的注解,是个空类,Spring也会把它当做配置类来解析,只不过啥也没解析到罢了]
 		//那么在获取bean的时候
 		//不能用UserService userService = (UserService) context.getBean("userService");
-		//而是用UserService userService = (UserService) context.getBean("com.jianghaotian.service.UserService");
+		//而是用UserService userService = (UserService) context.getBean("com.jianghaotian.jianghaotian.service.UserService");
 		processImports(configClass, sourceClass, getImports(sourceClass), filter, true);
 
 		// Process any @ImportResource annotations
