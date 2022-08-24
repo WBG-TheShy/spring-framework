@@ -76,13 +76,25 @@ public class ThrowsAdviceInterceptor implements MethodInterceptor, AfterAdvice {
 		Assert.notNull(throwsAdvice, "Advice must not be null");
 		this.throwsAdvice = throwsAdvice;
 
+		//把Advice所有的方法拿出来
 		Method[] methods = throwsAdvice.getClass().getMethods();
+		//遍历
 		for (Method method : methods) {
+			//如果方法名是afterThrowing且入参是1个或者4个
+			//Spring规定,如果你实现了ThrowsAdvice接口,那么你的方法必须是以下4种之一
+			//public void afterThrowing(Exception ex)
+			//public void afterThrowing(RemoteException ex)
+			//public void afterThrowing(Method method, Object[] args, Object target, Exception ex)
+			//public void afterThrowing(Method method, Object[] args, Object target, ServletException ex)
 			if (method.getName().equals(AFTER_THROWING) &&
 					(method.getParameterCount() == 1 || method.getParameterCount() == 4)) {
+				//规定的四种里,最后一个参数是异常,所以从最后一个入参里拿到异常类型
 				Class<?> throwableParam = method.getParameterTypes()[method.getParameterCount() - 1];
+				//如果异常类型是Throwable
 				if (Throwable.class.isAssignableFrom(throwableParam)) {
 					// An exception handler to register...
+					//那么就把这个方法放到exceptionHandlerMap里
+					//key是异常类型,value是方法
 					this.exceptionHandlerMap.put(throwableParam, method);
 					if (logger.isDebugEnabled()) {
 						logger.debug("Found exception handler method on throws advice: " + method);
@@ -110,11 +122,15 @@ public class ThrowsAdviceInterceptor implements MethodInterceptor, AfterAdvice {
 	@Nullable
 	public Object invoke(MethodInvocation mi) throws Throwable {
 		try {
+			//正常执行
 			return mi.proceed();
 		}
 		catch (Throwable ex) {
+			//如果抛异常
+			//拿到这个异常对应的方法
 			Method handlerMethod = getExceptionHandler(ex);
 			if (handlerMethod != null) {
+				//然后执行这方法
 				invokeHandlerMethod(mi, ex, handlerMethod);
 			}
 			throw ex;

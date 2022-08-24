@@ -42,15 +42,22 @@ class AspectJAutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 	public void registerBeanDefinitions(
 			AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 
+		//注册AnnotationAwareAspectJAutoProxyCreator这个bean(本质上是一个BeanPostProcessor,重写了初始化后方法,将在初始化后这个阶段生成bean的代理对象)到Spring容器中
+		//bean名字为org.springframework.aop.config.internalAutoProxyCreator
 		AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(registry);
 
+		//再去看@EnableAspectJAutoProxy注解上的值
 		AnnotationAttributes enableAspectJAutoProxy =
 				AnnotationConfigUtils.attributesFor(importingClassMetadata, EnableAspectJAutoProxy.class);
 		if (enableAspectJAutoProxy != null) {
+			//proxyTargetClass属性
 			if (enableAspectJAutoProxy.getBoolean("proxyTargetClass")) {
+				//如果是true,则将此属性添加到bean定义中
 				AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry);
 			}
+			//exposeProxy属性
 			if (enableAspectJAutoProxy.getBoolean("exposeProxy")) {
+				//如果是true,则将此属性添加到bean定义中
 				AopConfigUtils.forceAutoProxyCreatorToExposeProxy(registry);
 			}
 		}

@@ -89,7 +89,9 @@ public class DefaultAdvisorChainFactory implements AdvisorChainFactory, Serializ
 					}
 					//如果匹配
 					if (match) {
-						//将advisor封装成MethodInterceptor,这里是数组的原因是:有可能这个advisor既是before通知器,也是afterRunning通知器,所以生成两个Interceptor
+						//将advisor封装成MethodInterceptor,这里是数组的原因是:有可能这个advisor既是before通知器,也是afterRunning通知器,所以会生成两个Interceptor
+						//在Spring中有3种Advice通知器:BeforeAdvice,AfterReturningAdvice,ThrowsAdvice
+						//还有1个MethodInterceptor:Around
 						MethodInterceptor[] interceptors = registry.getInterceptors(advisor);
 						//如果方法匹配器的isRuntime=true
 						//这里要理解一个东西:MethodMatcher有两个matchs方法,一个是带方法入参的,一个是不带的

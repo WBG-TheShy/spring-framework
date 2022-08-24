@@ -75,6 +75,7 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	protected Object[] getAdvicesAndAdvisorsForBean(
 			Class<?> beanClass, String beanName, @Nullable TargetSource targetSource) {
 
+		//寻找匹配的Advisor
 		List<Advisor> advisors = findEligibleAdvisors(beanClass, beanName);
 		if (advisors.isEmpty()) {
 			return DO_NOT_PROXY;
@@ -93,16 +94,23 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * @see #extendAdvisors
 	 */
 	protected List<Advisor> findEligibleAdvisors(Class<?> beanClass, String beanName) {
+		//找出所有的Advisor(实现了Advisor接口的bean对象+切面bean中的定义的切点)
 		List<Advisor> candidateAdvisors = findCandidateAdvisors();
+		//筛选(根据Advisor里的Pointcut来判断是否和当前的bean的类和bean的所有方法匹配)
+		//核心是调用Pointcut类的ClassFilter和MethodMatcher的matches()方法进行匹配
 		List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
+		//扩展逻辑,由子类实现
 		extendAdvisors(eligibleAdvisors);
 		if (!eligibleAdvisors.isEmpty()) {
+			//进行@Orderde排序
 			eligibleAdvisors = sortAdvisors(eligibleAdvisors);
 		}
 		return eligibleAdvisors;
 	}
 
 	/**
+	 * 注意:此时要进入AnnotationAwareAspectJAutoProxyCreator类中看覆盖的方法
+	 * 这是父类的
 	 * Find all candidate Advisors to use in auto-proxying.
 	 * @return the List of candidate Advisors
 	 */

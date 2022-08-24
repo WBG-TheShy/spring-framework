@@ -12,7 +12,6 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
  *
  * @author jianghaotian
  */
-@EnableAspectJAutoProxy
 public class Test {
 	public static void main(String[] args) {
 		//Bean的生命周期

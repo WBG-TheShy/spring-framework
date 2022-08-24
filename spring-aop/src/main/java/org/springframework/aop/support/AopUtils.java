@@ -223,9 +223,14 @@ public abstract class AopUtils {
 	 */
 	public static boolean canApply(Pointcut pc, Class<?> targetClass, boolean hasIntroductions) {
 		Assert.notNull(pc, "Pointcut must not be null");
+
+		//先判断当前的Pointcut类匹配器是否和bean匹配
+		//不匹配直接返回false,表示这个切点没切到这个bean
 		if (!pc.getClassFilter().matches(targetClass)) {
 			return false;
 		}
+
+		//匹配则继续往下
 
 		MethodMatcher methodMatcher = pc.getMethodMatcher();
 		if (methodMatcher == MethodMatcher.TRUE) {
@@ -246,10 +251,12 @@ public abstract class AopUtils {
 
 		for (Class<?> clazz : classes) {
 			Method[] methods = ReflectionUtils.getAllDeclaredMethods(clazz);
+			//再循环bean的每一个方法
 			for (Method method : methods) {
 				if (introductionAwareMethodMatcher != null ?
 						introductionAwareMethodMatcher.matches(method, targetClass, hasIntroductions) :
 						methodMatcher.matches(method, targetClass)) {
+					//如果有一个方法匹配上了就返回true表示这个要进行代理
 					return true;
 				}
 			}

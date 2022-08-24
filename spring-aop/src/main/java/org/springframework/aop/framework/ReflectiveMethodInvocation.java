@@ -159,30 +159,41 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 	@Nullable
 	public Object proceed() throws Throwable {
 		// We start with an index of -1 and increment early.
+		//currentInterceptorIndex初始值为-1,每调用一个interceptor就加1
+		//interceptorsAndDynamicMethodMatchers是代理逻辑集合(也就是代理链)
+
+		//如果调用完了最后一个interceptor,则会执行被代理方法
 		if (this.currentInterceptorIndex == this.interceptorsAndDynamicMethodMatchers.size() - 1) {
 			return invokeJoinpoint();
 		}
 
+		//获取代理链中第一个interceptor
 		Object interceptorOrInterceptionAdvice =
 				this.interceptorsAndDynamicMethodMatchers.get(++this.currentInterceptorIndex);
+		//如果需要动态判断
 		if (interceptorOrInterceptionAdvice instanceof InterceptorAndDynamicMethodMatcher) {
 			// Evaluate dynamic method matcher here: static part will already have
 			// been evaluated and found to match.
 			InterceptorAndDynamicMethodMatcher dm =
 					(InterceptorAndDynamicMethodMatcher) interceptorOrInterceptionAdvice;
 			Class<?> targetClass = (this.targetClass != null ? this.targetClass : this.method.getDeclaringClass());
+			//则调用interceptorOrInterceptionAdvice的matches()方法
 			if (dm.methodMatcher.matches(this.method, targetClass, this.arguments)) {
+				//如果匹配成功,调用interceptor的invoke方法
 				return dm.interceptor.invoke(this);
 			}
 			else {
 				// Dynamic matching failed.
 				// Skip this interceptor and invoke the next in the chain.
+				//如果匹配不成功,则直接跳过该interceptor,继续调用下一个interceptor
 				return proceed();
 			}
 		}
 		else {
 			// It's an interceptor, so we just invoke it: The pointcut will have
 			// been evaluated statically before this object was constructed.
+			//如果不需要动态判断,则直接调用当前interceptor的invoke方法
+			//传入的参数是this也就是自己,所以执行下面的代码,执行到MethodInvocatin的proceed方法,则又会进入到这里,相当于递归,直到执行到代理链的最后一个时,递归才会终止
 			return ((MethodInterceptor) interceptorOrInterceptionAdvice).invoke(this);
 		}
 	}

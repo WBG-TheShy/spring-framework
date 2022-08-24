@@ -82,17 +82,21 @@ public class DefaultAdvisorAdapterRegistry implements AdvisorAdapterRegistry, Se
 		List<MethodInterceptor> interceptors = new ArrayList<>(3);
 		//从Advisor里获取Advice
 		Advice advice = advisor.getAdvice();
+		//如果本身就是MethodInterceptor(Around环绕通知),则直接加到代理链里面
 		if (advice instanceof MethodInterceptor) {
 			interceptors.add((MethodInterceptor) advice);
 		}
+		//如果不是MethodInterceptor(BeforeAdvice,AfterReturningAdvice,ThrowsAdvice),则遍历所有的AdvisorAdapter(Advice适配器),如果能够适配成功,则把适配后的Adcice加到代理链里面
 		for (AdvisorAdapter adapter : this.adapters) {
 			if (adapter.supportsAdvice(advice)) {
 				interceptors.add(adapter.getInterceptor(advisor));
 			}
 		}
+		//如果还是没有找到代理链,说明这个Advice类型未知,抛异常
 		if (interceptors.isEmpty()) {
 			throw new UnknownAdviceTypeException(advisor.getAdvice());
 		}
+		//返回代理链
 		return interceptors.toArray(new MethodInterceptor[0]);
 	}
 

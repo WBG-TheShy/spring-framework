@@ -293,7 +293,8 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	public Object postProcessAfterInitialization(@Nullable Object bean, String beanName) {
 		if (bean != null) {
 			Object cacheKey = getCacheKey(bean.getClass(), beanName);
-			//如果已经代理的对象缓存里有当前的bean了,那就说明这个bean已经创建过一个代理对象了
+			//如果已经代理的对象缓存里有当前的bean了,那就说明这个bean已经创建过一个代理对象了就不会进入if中
+			//反之会进入if中创建代理对象
 			if (this.earlyProxyReferences.remove(cacheKey) != bean) {
 				return wrapIfNecessary(bean, beanName, cacheKey);
 			}
@@ -334,21 +335,23 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		if (StringUtils.hasLength(beanName) && this.targetSourcedBeans.contains(beanName)) {
 			return bean;
 		}
+		//如果从已处理的bean中获取到的值为false,表示不需要进行aop,结束方法
 		if (Boolean.FALSE.equals(this.advisedBeans.get(cacheKey))) {
 			return bean;
 		}
+		//如果当前的bean不需要进行AOP(比如当前bean本身就是个PointCut,或者Advice或者Advisor等等),则直接返回,并放入缓存中,表示已经处理过此bean了,结束方法
 		if (isInfrastructureClass(bean.getClass()) || shouldSkip(bean.getClass(), beanName)) {
 			this.advisedBeans.put(cacheKey, Boolean.FALSE);
 			return bean;
 		}
 
 		// Create proxy if we have advice.
-		//判断是否需要AOP
+		//找到当前的bean匹配的Advisor们
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
-		//如果需要AOP
+		//如果有,则需要AOP
 		if (specificInterceptors != DO_NOT_PROXY) {
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
-			//生成代理对象
+			//生成代理对象(利用ProxyFactory)
 			Object proxy = createProxy(
 					bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
 			//代理对象添加到缓存中
