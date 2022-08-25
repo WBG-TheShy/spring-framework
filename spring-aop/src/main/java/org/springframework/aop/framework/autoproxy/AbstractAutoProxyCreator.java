@@ -293,7 +293,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 	public Object postProcessAfterInitialization(@Nullable Object bean, String beanName) {
 		if (bean != null) {
 			Object cacheKey = getCacheKey(bean.getClass(), beanName);
-			//如果已经代理的对象缓存里有当前的bean了,那就说明这个bean已经创建过一个代理对象了就不会进入if中
+			//如果已经代理的对象缓存里有当前的bean了,那就说明这个bean已经创建过一个代理对象了就不会进入if中(循环依赖的时候会提前生成代理对象放入到earlyProxyReferences中,所以此时就不需要在生成一次代理对象了)
 			//反之会进入if中创建代理对象
 			if (this.earlyProxyReferences.remove(cacheKey) != bean) {
 				return wrapIfNecessary(bean, beanName, cacheKey);

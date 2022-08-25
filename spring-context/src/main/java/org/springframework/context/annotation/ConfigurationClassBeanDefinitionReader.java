@@ -156,9 +156,9 @@ class ConfigurationClassBeanDefinitionReader {
 			loadBeanDefinitionsForBeanMethod(beanMethod);
 		}
 
-		//如果ConfigurationClass中导入了一些资源文件，比如xx.xml，那么则解析这些xx.xml文 件，得到并注册BeanDefinition
+		//如果ConfigurationClass中导入了一些资源文件，比如xx.xml，那么则解析这些xx.xml文件，得到并注册BeanDefinition
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
-		//如果ConfigurationClass中导入了一些ImportBeanDefinitionRegistrar，那么则执行对应 的registerBeanDefinitions进行BeanDefinition的注册
+		//如果ConfigurationClass中导入了一些ImportBeanDefinitionRegistrar，那么则执行对应的registerBeanDefinitions()进行BeanDefinition的注册
 		loadBeanDefinitionsFromRegistrars(configClass.getImportBeanDefinitionRegistrars());
 	}
 

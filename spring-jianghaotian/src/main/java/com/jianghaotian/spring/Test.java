@@ -30,6 +30,7 @@ public class Test {
 		//0 [bean工厂回调]BeanFactoryPostProcessor.postProcessBeanFactory()----bean工厂后置处理器
 			//[可以利用bean定义注册器做额外的操作]BeanDefinitionRegistryPostProcessor.postProcessBeanDefinitionRegistry()--解析配置类(其中解析@ComponentScan注解的时候会去扫描[核心方法doScan()])
 				//解析配置类(配置类:类上有@Component,@PropertySource,@ComponentScan,@Import,@ImportResource至少一个,方法上有@Bean)
+				//可以解析配置类是因为Spring在实例化注解读取器的时候添加了ConfigurationClassPostProcessor,这个类就可以解析配置类
 				//a.@Component:检查内部类是不是配置类,如果是,则解析它
 				//b.@ComponentScan:扫描并注册bean定义(扫描的过程中,如果发现扫描出来的也是配置类,则解析它)
 					//核心方法doScan()
@@ -37,16 +38,16 @@ public class Test {
 					//b2. 遍历每个Resource对象
 					//b3. 利用MetadataReaderFactory解析Resource对象得到MetadataReader(在Spring源码中 MetadataReaderFactory具体的实现类为CachingMetadataReaderFactory， MetadataReader的具体实现类为SimpleMetadataReader)
 						//值得注意的是，CachingMetadataReaderFactory解析某个.class文件得到MetadataReader对象是利用的ASM技术，并没有加载这个类到JVM。
-					//b4. 利用MetadataReader进行excludeFilters和includeFilters，以及条件注解@Conditional的筛选 (条件注解并不能理解:某个类上是否存在@Conditional注解，如果存在则调用注解中所指定 的类的match方法进行匹配，匹配成功则通过筛选，匹配失败则pass掉。)
+					//b4. 利用MetadataReader进行excludeFilters和includeFilters(默认情况下includeFilters里有@Component,表示Spring只扫描@@Component的类)，以及条件注解@Conditional的筛选 (条件注解并不能理解:某个类上是否存在@Conditional注解，如果存在则调用注解中所指定 的类的match方法进行匹配，匹配成功则通过筛选，匹配失败则pass掉。)
 					//b5. 筛选通过后，基于metadataReader生成ScannedGenericBeanDefinition
 						//最终得到的ScannedGenericBeanDefinition对象，beanClass属性存储的是当前类的名字，而不是class对象。(beanClass属性的类型是Object，它即可以存储类的名字，也可以存储class对象)
-					//b6. 再基于metadataReader判断是不是对应的类是不是接口或抽象类
+					//b6. 再基于metadataReader判断是不是对应的类是不是接口或抽象类,如果是,则不进行注册bean定义操作
 					//b7. 为每个bean定义生成beanName
 					//b8. 给bean定义的一些属性赋默认值(包括解析@Lazy,@Primary,@DependsOn,@Order,@Scope)
 					//b7. 注册beanName+bean定义到Spring容器中
 				//c.@Import:调用processImports()方法
-					//c1.导入的是ImportSelector类型:那么调用执行selectImports方法得到类名，然后在把这个类当做配置类进行解析
-					//c2.导入的是ImportBeanDefinitionRegis类型:那么则生成一个ImportBeanDefinitionRegistrar实例对象，并添加到配置类对象中(ConfigurationClass)的importBeanDefinitionRegistrars属性中
+					//c1.导入的是ImportSelector类型:那么调用执行selectImports方法得到类名，然后把这些类名对应的类当做配置类进行解析
+					//c2.导入的是ImportBeanDefinitionRegistrar类型:那么则生成一个ImportBeanDefinitionRegistrar实例对象，并添加到配置类对象中(ConfigurationClass)的importBeanDefinitionRegistrars属性中
 					//c3.导入的是普通的类:将这个类当做新配置类解析
 				//d.@ImportResource:把导入进来的资源路径存在配置类对象中的importedResources属性中
 				//e.@PropertySource:解析该注解，并得到PropertySource对象，并添加到environment中去
@@ -164,6 +165,62 @@ public class Test {
 		//8. [初始化前]BeanPostProcessor.postProcessBeforeInitialization()----执行@PostConstruct方法,另一些Aware接口的回调
 		//9. 初始化-----如果实现了InitializingBean接口,就调用其afterPropertiesSet() 方法
 		//10. [初始化后]BeanPostProcessor.postProcessAfterInitialization()----基于AOP的处理,返回的是代理bean对象
+			//OOP表示面向对象编程，是一种编程思想，AOP表示面向切面编程，也是一种编程思想，而我们上面所描述的就是Spring为了让程序员更加方便的做到面向切面编程所提供的技术支持，换句话说，就是Spring提供了一套机制，可以让我们更加容易的来进行AOP，所以这套机制我们也可以称之为 Spring AOP。
+			//但是值得注意的是，上面所提供的注解的方式来定义Pointcut和Advice，Spring并不是首创，首创是 AspectJ，而且也不仅仅只有Spring提供了一套机制来支持AOP，还有比如 JBoss 4.0、aspectwerkz 等技术都提供了对于AOP的支持。而刚刚说的注解的方式，Spring是依赖了AspectJ的，或者说， Spring是直接把AspectJ中所定义的那些注解直接拿过来用，自己没有再重复定义了，不过也仅仅只 是把注解的定义赋值过来了，每个注解具体底层是怎么解析的，还是Spring自己做的，所以我们在用 Spring时，如果你想用@Before、@Around等注解，是需要单独引入aspecj相关jar包的，比如:
+			//  compile group: 'org.aspectj', name: 'aspectjrt', version: '1.9.5'
+			//  compile group: 'org.aspectj', name: 'aspectjweaver', version: '1.9.5'
+			//值得注意的是:AspectJ是在编译时对字节码进行了修改，是直接在UserService类对应的字节码中进 行增强的，也就是可以理解为是在编译时就会去解析@Before这些注解，然后得到代理逻辑，加入到 被代理的类中的字节码中去的，所以如果想用AspectJ技术来生成代理对象 ，是需要用单独的 AspectJ编译器的。我们在项目中很少这么用，我们仅仅只是用了@Before这些注解，而我们在启动 Spring的过程中，Spring会去解析这些注解，然后利用动态代理机制生成代理对象的。
+
+			//所以Spring借用了以下AspectJ的注解,并解析为对应的Advice类
+			//1. @Before			AspectJMethodBeforeAdvice(实现MethodBeforeAdvice接口)
+			//2. @AfterReturning	AspectJAfterReturningAdvice(实现AfterReturningAdvice接口)
+			//3. @AfterThrowing		AspectJAfterThrowingAdvice(实现MethodInterceptor接口)
+			//4. @After				AspectJAfterAdvice(实现AfterAdvice接口+MethodInterceptor接口)
+			//5. @Around			AspectJAroundAdvice(实现MethodInterceptor接口)
+
+			//Spring AOP的实现方式是使用代理模式:即通过生成代理对象来增强被代理类的一个或多个方法的逻辑
+			//而如何生成代理对象呢?有两种,一个是CGLIB(基于继承),另一个是JDK动态代理(基于接口)
+			//而Spring则整合了二者,提供了ProxyFactory,它可以动态判断使用CGLIB代理还是使用JDK动态代理
+			//ProxyFactory通过setTarget()方法设置被代理对象(内部会构造一个targetSource),addAdvisors()方法可以设置Advisor(Advisor可以理解为切点Pointcut和代理逻辑Advice)
+			//最后使用getProxy()方法来获得代理对象
+
+			//那么如何开启Spring AOP呢? 可以再配置类上加@EnableAspectJAutoProxy注解,
+			//这个注解上有@Import(AspectJAutoProxyRegistrar.class),AspectJAutoProxyRegistrar又是一个ImportBeanDefinitionRegistrar类型
+			//所以Spring会执行registerBeanDefinitions()方法,
+			//而在这个方法里,Spring会注册AnnotationAwareAspectJAutoProxyCreator这个bean(本质上是一个BeanPostProcessor,重写了初始化后方法,将在初始化后这个阶段生成bean的代理对象)到Spring容器中
+			//bean名字为org.springframework.aop.config.internalAutoProxyCreator
+			//而AnnotationAwareAspectJAutoProxyCreator类的父类的父类是AbstractAutoProxyCreator,这个类非常重要,它重写了postProcessAfterInitialization(),这个方法里,来进行AOP的
+
+			//Spring通过AOP生成代理对象的逻辑
+			//1.判断是否需要进行AOP(如果bean本身就是一个Advice或者Advisor,Pointcut等等就不需要进行AOP)
+			//2.找到和当前bean匹配的Advisor们
+				//a.找出所有的Advisor
+					//a1.从Spring容器中获得实现了Advisor接口的bean对象
+					//a2.从切面bean(被@Aspect修饰的bean)中解析出来的Advisor
+						//a21.从Spring容器获得所有的bean名字
+						//a22.判断每一个bean名字对应的类型,如果有@Aspect,则认定为是一个切面bean,继续解析类中的Advisor
+							//a221.获取bean中所有没有加@Pointcut注解的方法
+							//a222.先按照@Around > @Before > @After > @AfterReturning > @AfterThrowing的顺序排序
+							//a223.如果注解相同在按照方法的名字排序
+							//a224.遍历方法
+							//a225.解析出当前方法上的Pointcut,如果没有Pointcut,则继续遍历下一个方法
+							//a226.将当前方法+Pointcut等等封装成一个InstantiationModelAwarePointcutAdvisorImpl(这个类实现PointcutAdvisor接口,这个接口的getAdvice()方法会根据方法上的@Before,@After等注解生成一个XXXXXXAdvice实现类)并返回
+				//b.根据Advisor里的Pointcut来判断是否和当前的bean的类和bean的所有方法匹配,核心是调用Pointcut类的ClassFilter和MethodMatcher的matches()方法进行匹配
+				//c.根据@Order排序
+			//3.如果找到了Advisor们,则去生成ProxyFactory,并且调用getProxy()获得代理对象并返回
+			//	没找到就不进行AOP
+
+			//当程序员用代理对象执行方法的时候
+			//1.会把ProxyFactory中的Advisor拿出来(Advisor里的getAdvice()方法)和当前正在执行的方法进行匹配筛选
+			//2.从所有的Advisor里找到和当前方法所匹配的Advisor
+				//a.将Advisor里的Pointcut找出来,然后调用Pointcut类的ClassFilter和MethodMatcher的matches()方法进行匹配
+			//3.将匹配的Advisor适配成MethodInterceptor
+				//a.将advisor封装成MethodInterceptor数组,这里是数组的原因是:有可能这个advisor既是before通知器,也是afterRunning通知器,所以会生成两个Interceptor
+				//b.在Spring中有3种Advice通知器:BeforeAdvice,AfterReturningAdvice,ThrowsAdvice,还有1个MethodInterceptor:Around
+			//4.把和当前方法匹配的MethodInterceptor链，以及被代理对象、代理对象、代理类、当前Method对象、方法参数封装为MethodInvocation对象
+			//5.调用MethodInvocation的proceed()方法，开始执行各个MethodInterceptor以及被代理对象 的对应方法
+			//6.按顺序调用每个MethodInterceptor的invoke()方法，并且会把MethodInvocation对象传入 invoke()方法
+			//7.直到执行完最后一个MethodInterceptor了，就会调用invokeJoinpoint()方法，从而执行被代 理对象的当前方法
 		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
 		//创建bean
 		UserService userService = (UserService) context.getBean("userService");
