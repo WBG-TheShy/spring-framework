@@ -159,6 +159,7 @@ import org.springframework.core.Ordered;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+//导入了TransactionManagementConfigurationSelector,这是一个importSelector,所以Spring会执行里面的selectImports方法
 @Import(TransactionManagementConfigurationSelector.class)
 public @interface EnableTransactionManagement {
 

@@ -136,12 +136,13 @@ abstract class ConfigurationClassUtils {
 		//从类中取出@Configuration注解
 		Map<String, Object> config = metadata.getAnnotationAttributes(Configuration.class.getName());
 		//如果类中有 @Configuration 注解并且 proxyBeanMethods 属性为 true或null，则标记配置类为FULL模式 @Configuration(proxyBeanMethods=true)或@Configuration
+		//Full模式意味着保证每个@Bean方法被调用多少次返回的组件都是单例的
 		if (config != null && !Boolean.FALSE.equals(config.get("proxyBeanMethods"))) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_FULL);
 		}
 		//要不有@Configuration(proxyBeanMethods=false)注解
 		//要不有@Bean(有@Bean修饰的方法),@Component,@ComponentScan,@Import,@ImportResource 这些条件的其中一个或多个
-		//标记为Lite模式
+		//标记为Lite模式,意味着每个@Bean方法被调用多少次返回的组件都是新创建的
 		else if (config != null || isConfigurationCandidate(metadata)) {
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_LITE);
 		}

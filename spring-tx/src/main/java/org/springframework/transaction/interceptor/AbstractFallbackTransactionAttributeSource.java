@@ -107,26 +107,37 @@ public abstract class AbstractFallbackTransactionAttributeSource
 		}
 
 		// First, see if we have a cached value.
+		//先从缓存中找(缓存里缓存的是当前类或者方法是否加了@Transactional注解)
 		Object cacheKey = getCacheKey(method, targetClass);
 		TransactionAttribute cached = this.attributeCache.get(cacheKey);
 		if (cached != null) {
 			// Value will either be canonical value indicating there is no transaction attribute,
 			// or an actual transaction attribute.
+			//如果缓存里有值
+
+			//如果是空值
 			if (cached == NULL_TRANSACTION_ATTRIBUTE) {
+				//返回null
 				return null;
 			}
 			else {
+				//否则,返回缓存里的值
 				return cached;
 			}
 		}
 		else {
 			// We need to work it out.
+			//缓存里没有值,则现场获取
+
+			//解析@Transactional注解里的属性,并把属性里的值封装成为一个TransactionAttribute(这是个接口,实际上是一个RuleBasedTransactionAttribute)
 			TransactionAttribute txAttr = computeTransactionAttribute(method, targetClass);
 			// Put it in the cache.
 			if (txAttr == null) {
+				//如果没有解析出来,放入空值到缓存
 				this.attributeCache.put(cacheKey, NULL_TRANSACTION_ATTRIBUTE);
 			}
 			else {
+				//如果解析出来了
 				String methodIdentification = ClassUtils.getQualifiedMethodName(method, targetClass);
 				if (txAttr instanceof DefaultTransactionAttribute) {
 					DefaultTransactionAttribute dta = (DefaultTransactionAttribute) txAttr;

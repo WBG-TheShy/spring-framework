@@ -27,9 +27,9 @@ public class Test {
 
 		//所有后处理器的执行顺序
 		//-----------------------------------------parse()-----------------------------------------
-		//0 [bean工厂回调]BeanFactoryPostProcessor.postProcessBeanFactory()----bean工厂后置处理器
-			//[可以利用bean定义注册器做额外的操作]BeanDefinitionRegistryPostProcessor.postProcessBeanDefinitionRegistry()--解析配置类(其中解析@ComponentScan注解的时候会去扫描[核心方法doScan()])
-				//解析配置类(配置类:类上有@Component,@PropertySource,@ComponentScan,@Import,@ImportResource至少一个,方法上有@Bean)
+		//0 [bean工厂回调]BeanFactoryPostProcessor.postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)----bean工厂后置处理器
+			//[可以利用bean定义注册器做额外的操作]BeanDefinitionRegistryPostProcessor.postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)--解析配置类(其中解析@ComponentScan注解的时候会去扫描[核心方法doScan()])
+				//解析配置类(配置类:类上有@Configuration或@Component,@PropertySource,@ComponentScan,@Import,@ImportResource至少一个,方法上有@Bean)
 				//可以解析配置类是因为Spring在实例化注解读取器的时候添加了ConfigurationClassPostProcessor,这个类就可以解析配置类
 				//a.@Component:检查内部类是不是配置类,如果是,则解析它
 				//b.@ComponentScan:扫描并注册bean定义(扫描的过程中,如果发现扫描出来的也是配置类,则解析它)
@@ -41,11 +41,11 @@ public class Test {
 					//b4. 利用MetadataReader进行excludeFilters和includeFilters(默认情况下includeFilters里有@Component,表示Spring只扫描@@Component的类)，以及条件注解@Conditional的筛选 (条件注解并不能理解:某个类上是否存在@Conditional注解，如果存在则调用注解中所指定 的类的match方法进行匹配，匹配成功则通过筛选，匹配失败则pass掉。)
 					//b5. 筛选通过后，基于metadataReader生成ScannedGenericBeanDefinition
 						//最终得到的ScannedGenericBeanDefinition对象，beanClass属性存储的是当前类的名字，而不是class对象。(beanClass属性的类型是Object，它即可以存储类的名字，也可以存储class对象)
-					//b6. 再基于metadataReader判断是不是对应的类是不是接口或抽象类,如果是,则不进行注册bean定义操作
+					//b6. 再基于metadataReader判断对应的类是不是接口或抽象类,如果是,则不进行注册bean定义操作
 					//b7. 为每个bean定义生成beanName
 					//b8. 给bean定义的一些属性赋默认值(包括解析@Lazy,@Primary,@DependsOn,@Order,@Scope)
 					//b7. 注册beanName+bean定义到Spring容器中
-				//c.@Import:调用processImports()方法
+				//c.@Import[在processImports()方法中解析的]:
 					//c1.导入的是ImportSelector类型:那么调用执行selectImports方法得到类名，然后把这些类名对应的类当做配置类进行解析
 					//c2.导入的是ImportBeanDefinitionRegistrar类型:那么则生成一个ImportBeanDefinitionRegistrar实例对象，并添加到配置类对象中(ConfigurationClass)的importBeanDefinitionRegistrars属性中
 					//c3.导入的是普通的类:将这个类当做新配置类解析
@@ -71,7 +71,7 @@ public class Test {
 				//d.如果新的配置类中导入了一些ImportBeanDefinitionRegistrar，那么则执行对应的registerBeanDefinitions进行BeanDefinition的注册
 
 		//-----------------------------------------createBean()-----------------------------------------
-		//1. [实例化前]InstantiationAwareBeanPostProcessor.postProcessBeforeInstantiation()---基本不用
+		//1. [实例化前]InstantiationAwareBeanPostProcessor.postProcessBeforeInstantiation(Class<?> beanClass, String beanName)---基本不用
 
 		//-----------------------------------------doCreateBean()-----------------------------------------
 		//2. 实例化----推断构造方法[核心方法 createBeanInstance()]
@@ -79,7 +79,7 @@ public class Test {
 			//b.如果BeanDefinition绑定了一个Supplier，那就调用Supplier的get方法得到一个对象并直接返回
 			//c.如果BeanDefinition中存在factoryMethodName，那么就调用该工厂方法得到一个bean对象并返回(处理@Bean就用到了工厂方法)
 			//d.如果BeanDefinition已经自动构造过了，那就调用autowireConstructor()自动构造一个对象
-			//e.调用SmartInstantiationAwareBeanPostProcessor的determineCandidateConstructors()方法得到哪些构造方法是可以用的
+			//e.调用SmartInstantiationAwareBeanPostProcessor的determineCandidateConstructors(Class<?> beanClass, String beanName)方法得到哪些构造方法是可以用的
 				//我们熟知的AutowiredAnnotationBeanPostProcessor就是实现了SmartInstantiationAwareBeanPostProcessor,
 				//它可以让程序员通过@Autowired注解去指定用哪一个构造方法实例化
 				//e1.如果所有的构造方法没有一个加了@Autowired注解
@@ -91,27 +91,26 @@ public class Test {
 					//e22.有多个required=true的构造方法,抛异常
 					//e23.有一个required=true和其他required=false的构造方法,抛异常
 					//e24.没有required=true的构造方法,返回所有required=false的构造方法+无参构造方法
-			//f.如果第5步的返回了可用的构造方法，
+			//f.如果第e步返回了可用的构造方法，
 			// 	或者当前BeanDefinition的autowired是AUTOWIRE_CONSTRUCTOR(xml才会有这个)，
 			// 	或者BeanDefinition中指定了构造方法参数值(AbstractBeanDefinition.setConstructorArgumentValues())，
 			// 	或者创建Bean的时候指定了构造方法参数值(getBean()方法可以传入构造方法入参值)，
 			// 	那么就调用autowireConstructor()方法自动构造一个对象
+				//实例化要使用构造方法,所以Spring会有一套策略来推断出最适合的一个构造方法,而推断的逻辑,就在autowireConstructor()里面实现
+				//具体逻辑:
+				//a. 先检查是否指定了具体的构造方法和构造方法参数值，或者在BeanDefinition中缓存了具体的构造方法和构造方法参数值，如果存在那么则直接使用该构造方法进行实例化
+				//b. 如果没有确定的构造方法或构造方法参数值，那么
+					//b1. 如果没有传入构造方法，那么则找出类中所有的构造方法作为候选者,如果传入了构造方法,则直接把该构造方法当做候选者
+					//b2. 如果只有一个无参的构造方法，那么直接使用无参的构造方法进行实例化,流程结束
+					//b3. 如果有多个可用的构造方法或者当前Bean需要自动通过构造方法注入
+					//b4. 根据所指定的构造方法参数值，确定所需要的最少的构造方法参数值的个数
+					//b5. 对所有的构造方法进行筛选(入参数量小于上一步的值,则排除掉)+排序(参数个数多的在前面)
+					//b6. 遍历每个构造方法
+					//b7. 如果不是调用getBean方法时所指定的构造方法参数值，那么则根据构造方法参数类型找值
+					//b8. 如果是调用getBean方法时所指定的构造方法参数值，就直接利用这些值
+					//b9. 如果根据当前构造方法找到了对应的构造方法参数值，那么这个构造方法就是可用的，但是不一定这个构造方法就是最佳的，所以这里会涉及到是否有多个构造方法匹配了同样的值，
+					// 	  这个时候就会用值和构造方法类型进行匹配程度的打分，找到一个最匹配的
 			//g.最后，如果不是上述情况，就根据无参的构造方法实例化一个对象
-
-			//实例化要使用构造方法,所以Spring会有一套策略来推断出最适合的一个构造方法,而推断的逻辑,就在autowireConstructor()里面实现
-			//具体逻辑:
-			//a. 先检查是否指定了具体的构造方法和构造方法参数值，或者在BeanDefinition中缓存了具体的构造方法和构造方法参数值，如果存在那么则直接使用该构造方法进行实例化
-			//b. 如果没有确定的构造方法或构造方法参数值，那么
-				//b1. 如果没有传入构造方法，那么则找出类中所有的构造方法作为候选者,如果传入了构造方法,则直接把该构造方法当做候选者
-				//b2. 如果只有一个无参的构造方法，那么直接使用无参的构造方法进行实例化,流程结束
-				//b3. 如果有多个可用的构造方法或者当前Bean需要自动通过构造方法注入
-				//b4. 根据所指定的构造方法参数值，确定所需要的最少的构造方法参数值的个数
-				//b5. 对所有的构造方法进行筛选(入参数量小于上一步的值,则排除掉)+排序(参数个数多的在前面)
-				//b6. 遍历每个构造方法
-				//b7. 如果不是调用getBean方法时所指定的构造方法参数值，那么则根据构造方法参数类型找值
-				//b8. 如果是调用getBean方法时所指定的构造方法参数值，就直接利用这些值
-				//b9. 如果根据当前构造方法找到了对应的构造方法参数值，那么这个构造方法就是可用的，但是不一定这个构造方法就是最佳的，所以这里会涉及到是否有多个构造方法匹配了同样的值，
-				// 	  这个时候就会用值和构造方法类型进行匹配程度的打分，找到一个最匹配的
 
 			//如果实例化时出现循环依赖,则无法解决
 		//3. [对bean定义进行额外的处理]MergedBeanDefinitionPostProcessor.postProcessMergedBeanDefinition()---查找@Autowired的注入点并缓存

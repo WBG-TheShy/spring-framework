@@ -43,9 +43,14 @@ public class ProxyTransactionManagementConfiguration extends AbstractTransaction
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 	public BeanFactoryTransactionAttributeSourceAdvisor transactionAdvisor(
 			TransactionAttributeSource transactionAttributeSource, TransactionInterceptor transactionInterceptor) {
+		//本质是一个Advisor,所以定义了Pointcut和Advice
+		//Pointcut定义了只有当某个类上有@Transactional注解或者某个类的其中一个方法有@Transactional注解的时候,才会进行切面逻辑
+		//Advice定义了实现事务具体的实现逻辑
 
 		BeanFactoryTransactionAttributeSourceAdvisor advisor = new BeanFactoryTransactionAttributeSourceAdvisor();
+		//这个就是Pointcut(具体是TransactionAttributeSourcePointcut),就是第二个bean
 		advisor.setTransactionAttributeSource(transactionAttributeSource);
+		//这就是Advice(具体是TransactionInterceptor),就是第三个bean
 		advisor.setAdvice(transactionInterceptor);
 		if (this.enableTx != null) {
 			advisor.setOrder(this.enableTx.<Integer>getNumber("order"));
@@ -56,12 +61,15 @@ public class ProxyTransactionManagementConfiguration extends AbstractTransaction
 	@Bean
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 	public TransactionAttributeSource transactionAttributeSource() {
+		//AnnotationTransactionAttributeSource里面定义了一个Pointcut
+		//并且它可以解析@Transactional注解,得到一个RuleBasedTransactionAttribute对象
 		return new AnnotationTransactionAttributeSource();
 	}
 
 	@Bean
 	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 	public TransactionInterceptor transactionInterceptor(TransactionAttributeSource transactionAttributeSource) {
+		//这个可以理解为Spring事务的实现逻辑,包括开启事务,回滚,提交等等
 		TransactionInterceptor interceptor = new TransactionInterceptor();
 		interceptor.setTransactionAttributeSource(transactionAttributeSource);
 		if (this.txManager != null) {

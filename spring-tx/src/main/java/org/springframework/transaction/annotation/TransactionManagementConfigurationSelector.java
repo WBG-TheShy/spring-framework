@@ -45,11 +45,31 @@ public class TransactionManagementConfigurationSelector extends AdviceModeImport
 	 */
 	@Override
 	protected String[] selectImports(AdviceMode adviceMode) {
+		//Spring不会直接执行这个selectImports()方法,执行的是父类的selectImports(),因为父类的方法入参类型是AnnotationMetadata
 		switch (adviceMode) {
 			case PROXY:
+				//默认是PROXY
+
+				//所以这个时候Spring容器中就会有这两个bean
+				//1.AutoProxyRegistrar
+					//会注册一个InfrastructureAdvisorAutoProxyCreator(它的父类是AbstractAdvisorAutoProxyCreator)的bean,
+					//注册这个bean为了支持AOP,因为Spring事务的实现要用AOP代理
+
+					//这个和学习Spring AOP的时候开启的@EnableAspectJAutoProxy是不一样的
+					//@EnableAspectJAutoProxy注册的是AnnotationAwareAspectJAutoProxyCreator
+					//它的父类也是AbstractAdvisorAutoProxyCreator
+					//但是它额外可以解析@Aspect,@Before等等AspectJ相关的注解
+
+					//而InfrastructureAdvisorAutoProxyCreator只能解析Advisor对象,并不会解析切面bean
+				//2.ProxyTransactionManagementConfiguration
+					//往Spring容器扔了3个bean
+					//1.BeanFactoryTransactionAttributeSourceAdvisor
+					//2.TransactionAttributeSource
+					//3.TransactionInterceptor
 				return new String[] {AutoProxyRegistrar.class.getName(),
 						ProxyTransactionManagementConfiguration.class.getName()};
 			case ASPECTJ:
+				//表示不用动态代理技术,用AspectJ技术,会比较麻烦
 				return new String[] {determineTransactionAspectClass()};
 			default:
 				return null;
