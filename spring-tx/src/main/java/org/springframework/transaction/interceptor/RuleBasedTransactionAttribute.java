@@ -126,9 +126,20 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 		RollbackRuleAttribute winner = null;
 		int deepest = Integer.MAX_VALUE;
 
+		//例如:@Transactional(rollbackFor = {A.class,A1.class},noRollbackFor = {B.class,B1.class})
+		//rollbackFor:如果抛出了A以及A的子类的异常 或 A1以及A1的子类的异常,则进行回滚
+		//noRollbackFor:如果抛出了B以及B子类的异常 或 B1以及B1的子类的异常,则不回滚
+
+		//如果有rollbackFor属性,则把rollbackFor的值(是个数组)解析成rollbackRules
 		if (this.rollbackRules != null) {
+			//遍历每一个Rules
 			for (RollbackRuleAttribute rule : this.rollbackRules) {
+				//寻找当前异常距离Rules有多近
 				int depth = rule.getDepth(ex);
+				//如果是子类或本身 且 离得近(也就是在继承链里离设置的回滚异常最近)
+				//例如: A -> A1 -> A2
+				//如果注解这么写:@Transactional(rollbackFor = {A.class,A1.class},noRollbackFor = {B.class,B1.class})
+				//那么抛出的是A2异常,则A1对应的Rules胜出
 				if (depth >= 0 && depth < deepest) {
 					deepest = depth;
 					winner = rule;
@@ -137,10 +148,14 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 		}
 
 		// User superclass behavior (rollback on unchecked) if no rule matches.
+		//如果没有找到胜出者,则直接调用父类的方法
+		//父类中更简单:只要你是个RuntimeException或者Error,就返回true,也就是进行回滚
+		//所以,@Transactional在什么都没写的情况下,只要你是个RuntimeException或者Error,进行回滚
 		if (winner == null) {
 			return super.rollbackOn(ex);
 		}
 
+		//如果有胜出者,再去看胜出者是否在noRollbackFor里,如果是 则不进行回滚,如果不是,则进行回滚
 		return !(winner instanceof NoRollbackRuleAttribute);
 	}
 

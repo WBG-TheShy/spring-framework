@@ -25,7 +25,7 @@ public class UserService {
 	@Autowired
 	private UserService userService;
 
-	@Transactional
+	@Transactional(rollbackFor = {Exception.class,ClassCastException.class},noRollbackFor = {NullPointerException.class})
 	public void test(){
 
 		//当test()方法对应的事务在不同阶段可以执行程序员自己定义的逻辑
@@ -56,13 +56,13 @@ public class UserService {
 
 			@Override
 			public void beforeCompletion() {
-				//回滚之前
+				//提交事务或回滚之前
 				TransactionSynchronization.super.beforeCompletion();
 			}
 
 			@Override
 			public void afterCompletion(int status) {
-				//回滚之后
+				//提交事务或回滚之后
 				TransactionSynchronization.super.afterCompletion(status);
 			}
 		});

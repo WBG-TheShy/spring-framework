@@ -31,6 +31,11 @@ import java.io.InputStream;
 @EnableTransactionManagement
 public class AppConfig {
 
+	/**
+	 * 事务管理器
+	 *
+	 * @return
+	 */
 	@Bean
 	public PlatformTransactionManager transactionManager(){
 		DataSourceTransactionManager transactionManager = new DataSourceTransactionManager();
@@ -40,6 +45,11 @@ public class AppConfig {
 		return transactionManager;
 	}
 
+	/**
+	 * sqlSessionFactory
+	 * @return
+	 * @throws Exception
+	 */
 	@Bean
 	public SqlSessionFactory sqlSessionFactory() throws Exception {
 		SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
@@ -47,6 +57,10 @@ public class AppConfig {
 		return sqlSessionFactoryBean.getObject();
 	}
 
+	/**
+	 * 数据源
+	 * @return
+	 */
 	@Bean
 	public DataSource dataSource(){
 		DriverManagerDataSource dataSource = new DriverManagerDataSource();

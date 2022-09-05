@@ -53,6 +53,8 @@ public interface TransactionAttribute extends TransactionDefinition {
 	Collection<String> getLabels();
 
 	/**
+	 * 实际用的是RuleBasedTransactionAttribute
+	 *
 	 * Should we roll back on the given exception?
 	 * @param ex the exception to evaluate
 	 * @return whether to perform a rollback or not
