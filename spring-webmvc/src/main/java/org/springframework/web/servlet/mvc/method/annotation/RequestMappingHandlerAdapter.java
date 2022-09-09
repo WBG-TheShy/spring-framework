@@ -787,24 +787,35 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 			HttpServletResponse response, HandlerMethod handlerMethod) throws Exception {
 
 		ModelAndView mav;
+		//检查是否支持当前请求的请求类型(例如GET POST),可以通过设置父类中的supportedMethods来指定支持的请求类型
 		checkRequest(request);
 
 		// Execute invokeHandlerMethod in synchronized block if required.
+
+		//synchronizeOnSession默认为false
+		//如果设置为true的时候
 		if (this.synchronizeOnSession) {
+			//获取当前请求的session对象
 			HttpSession session = request.getSession(false);
 			if (session != null) {
+				//如果获取到了
 				Object mutex = WebUtils.getSessionMutex(session);
+				//锁住本次会话
 				synchronized (mutex) {
+					//对HandlerMethod进行参数解析,适配等处理,并调用目标handler
+					//也就是说如果synchronizeOnSession=true,Spring只处理1个请求
 					mav = invokeHandlerMethod(request, response, handlerMethod);
 				}
 			}
 			else {
 				// No HttpSession available -> no mutex necessary
+				//对HandlerMethod进行参数解析,适配等处理,并调用目标handler
 				mav = invokeHandlerMethod(request, response, handlerMethod);
 			}
 		}
 		else {
 			// No synchronization on session demanded at all...
+			//对HandlerMethod进行参数解析,适配等处理,并调用目标handler
 			mav = invokeHandlerMethod(request, response, handlerMethod);
 		}
 

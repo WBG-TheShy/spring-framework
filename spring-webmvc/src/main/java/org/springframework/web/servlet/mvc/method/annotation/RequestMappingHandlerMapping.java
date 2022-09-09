@@ -202,6 +202,7 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 			this.config.setPathMatcher(getPathMatcher());
 		}
 
+		//父类的初始化
 		super.afterPropertiesSet();
 	}
 
@@ -281,10 +282,15 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 	@Override
 	@Nullable
 	protected RequestMappingInfo getMappingForMethod(Method method, Class<?> handlerType) {
+		//判断方法上是否有@RequestMapping注解,如果有,则封装成一个RequestMappingInfo
 		RequestMappingInfo info = createRequestMappingInfo(method);
 		if (info != null) {
+			//判断类上是否也有@RequestMapping注解,如果有,则封装成一个RequestMappingInfo
 			RequestMappingInfo typeInfo = createRequestMappingInfo(handlerType);
 			if (typeInfo != null) {
+				//两个RequestMappingInfo合并
+				//例如:类 /user  方法:/info
+				//则合并成为/user/info
 				info = typeInfo.combine(info);
 			}
 			String prefix = getPathPrefix(handlerType);
@@ -318,9 +324,15 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 	 */
 	@Nullable
 	private RequestMappingInfo createRequestMappingInfo(AnnotatedElement element) {
+		//获取@RequestMapping注解
 		RequestMapping requestMapping = AnnotatedElementUtils.findMergedAnnotation(element, RequestMapping.class);
+		//程序员自定义的condition
+		//condition就是用来在请求的时候,调用某方法前,先回去检验所有的condition是否都是校验通过,如果是,才会是真正调用
 		RequestCondition<?> condition = (element instanceof Class ?
 				getCustomTypeCondition((Class<?>) element) : getCustomMethodCondition((Method) element));
+		//构造RequestMappingInfo对象
+		//其中,会同时构造许多基础的condition
+		//例如:RequestMethodCondition会判断当前的请求的类型和注解上定义的类型是否匹配,如果匹配,才会去执行
 		return (requestMapping != null ? createRequestMappingInfo(requestMapping, condition) : null);
 	}
 
@@ -365,6 +377,7 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 	protected RequestMappingInfo createRequestMappingInfo(
 			RequestMapping requestMapping, @Nullable RequestCondition<?> customCondition) {
 
+		//封装成一个RequestMappingInfo对象
 		RequestMappingInfo.Builder builder = RequestMappingInfo
 				.paths(resolveEmbeddedValuesInPatterns(requestMapping.path()))
 				.methods(requestMapping.method())
@@ -376,6 +389,7 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 		if (customCondition != null) {
 			builder.customCondition(customCondition);
 		}
+		//构造者模式
 		return builder.options(this.config).build();
 	}
 

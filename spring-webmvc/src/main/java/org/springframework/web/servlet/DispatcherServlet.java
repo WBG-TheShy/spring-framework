@@ -1040,10 +1040,18 @@ public class DispatcherServlet extends FrameworkServlet {
 			Exception dispatchException = null;
 
 			try {
+				//检查请求是否是MultipartRequest(上传文件的请求就是MultipartRequest)
 				processedRequest = checkMultipart(request);
 				multipartRequestParsed = (processedRequest != request);
 
 				// Determine handler for the current request.
+				//获取HandlerMapping(默认使用RequestMappingHandlerMapping),并用HandlerMapping解析请求,生成一个HandlerExecutionChain
+				//HandlerExecutionChain中有两个属性
+				//private final Object handler:具体映射到的方法(一般情况下,RequestMappingHandlerMapping解析出来的是一个HandleMethod类型)
+				//private final List<HandlerInterceptor> interceptorList = new ArrayList<>():拦截器链
+
+				//RequestMappingHandlerMapping由Spring单独注册成为一个bean,并且实现了InitializingBean接口,重写了afterPropertiesSet()方法
+				//org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.afterPropertiesSet()
 				mappedHandler = getHandler(processedRequest);
 				if (mappedHandler == null) {
 					noHandlerFound(processedRequest, response);
@@ -1051,6 +1059,7 @@ public class DispatcherServlet extends FrameworkServlet {
 				}
 
 				// Determine handler adapter for the current request.
+				//找到最合适的HandlerAdapter(默认返回的是RequestMappingHandlerAdapter)
 				HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 
 				// Process last-modified header, if supported by the handler.
@@ -1063,18 +1072,24 @@ public class DispatcherServlet extends FrameworkServlet {
 					}
 				}
 
+				//调用拦截器里的preHandle方法
 				if (!mappedHandler.applyPreHandle(processedRequest, response)) {
+					//如果返回false,则直接return,不进行后续处理了
 					return;
 				}
 
 				// Actually invoke the handler.
+				//调用HandlerAdapter的handle()方法,执行程序员写的业务方法
+				//默认情况下会调用RequestMappingHandlerAdapter.handleInternal()方法中
 				mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
 				if (asyncManager.isConcurrentHandlingStarted()) {
 					return;
 				}
 
+				//如果mv里的视图为null,则设置默认视图
 				applyDefaultViewName(processedRequest, mv);
+				//调用拦截器的后置处理
 				mappedHandler.applyPostHandle(processedRequest, response, mv);
 			}
 			catch (Exception ex) {
@@ -1085,6 +1100,7 @@ public class DispatcherServlet extends FrameworkServlet {
 				// making them available for @ExceptionHandler methods and other scenarios.
 				dispatchException = new NestedServletException("Handler dispatch failed", err);
 			}
+			//视图解析,渲染视图
 			processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
 		}
 		catch (Exception ex) {
@@ -1146,6 +1162,7 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		// Did the handler return a view to render?
 		if (mv != null && !mv.wasCleared()) {
+			//渲染视图
 			render(mv, request, response);
 			if (errorView) {
 				WebUtils.clearErrorRequestAttributes(request);
@@ -1164,6 +1181,7 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		if (mappedHandler != null) {
 			// Exception (if any) is already handled..
+			//调用拦截器的afterCompletion()方法
 			mappedHandler.triggerAfterCompletion(request, response, null);
 		}
 	}
@@ -1261,8 +1279,13 @@ public class DispatcherServlet extends FrameworkServlet {
 	@Nullable
 	protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
 		if (this.handlerMappings != null) {
+			//拿到所有的handlerMapping,开始解析
+			//handlerMappings属性是在容器启动阶段初始化设置的,Spring会从上下文中寻找类型是HandleMapping类型的bean,添加到handlerMappings中
+			//具体逻辑在initHandlerMapping()中
 			for (HandlerMapping mapping : this.handlerMappings) {
+				//具体是调用org.springframework.web.servlet.handler.AbstractHandlerMapping.getHandler()
 				HandlerExecutionChain handler = mapping.getHandler(request);
+				//谁先解析到就用谁的
 				if (handler != null) {
 					return handler;
 				}
@@ -1296,8 +1319,11 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @throws ServletException if no HandlerAdapter can be found for the handler. This is a fatal error.
 	 */
 	protected HandlerAdapter getHandlerAdapter(Object handler) throws ServletException {
+		//流程和handleMapping一样
 		if (this.handlerAdapters != null) {
+			//handlerAdapters也是在initHandlerAdapters()方法中初始化的
 			for (HandlerAdapter adapter : this.handlerAdapters) {
+				//谁先支持,谁就直接返回
 				if (adapter.supports(handler)) {
 					return adapter;
 				}
@@ -1375,9 +1401,12 @@ public class DispatcherServlet extends FrameworkServlet {
 		response.setLocale(locale);
 
 		View view;
+		//视图名称
 		String viewName = mv.getViewName();
 		if (viewName != null) {
 			// We need to resolve the view name.
+			//视图解析器解析
+			//说白了就是加上前后缀
 			view = resolveViewName(viewName, mv.getModelInternal(), locale, request);
 			if (view == null) {
 				throw new ServletException("Could not resolve view with name '" + mv.getViewName() +
