@@ -527,7 +527,9 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 		long startTime = System.currentTimeMillis();
 
 		try {
+			//初始化子容器
 			this.webApplicationContext = initWebApplicationContext();
+			//默认空实现,交给子类去扩展
 			initFrameworkServlet();
 		}
 		catch (ServletException | RuntimeException ex) {
@@ -558,12 +560,18 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * @see #setContextConfigLocation
 	 */
 	protected WebApplicationContext initWebApplicationContext() {
+
+		//先拿到父容器
 		WebApplicationContext rootContext =
 				WebApplicationContextUtils.getWebApplicationContext(getServletContext());
+
+		//子容器
 		WebApplicationContext wac = null;
 
 		if (this.webApplicationContext != null) {
 			// A context instance was injected at construction time -> use it
+
+			//拿到子容器
 			wac = this.webApplicationContext;
 			if (wac instanceof ConfigurableWebApplicationContext) {
 				ConfigurableWebApplicationContext cwac = (ConfigurableWebApplicationContext) wac;
@@ -573,8 +581,12 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 					if (cwac.getParent() == null) {
 						// The context instance was injected without an explicit parent -> set
 						// the root application context (if any; may be null) as the parent
+
+						//设置父子容器关系
 						cwac.setParent(rootContext);
 					}
+
+					//配置+刷新子容器
 					configureAndRefreshWebApplicationContext(cwac);
 				}
 			}
@@ -684,21 +696,43 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 			}
 		}
 
+		//设置ServletContext
 		wac.setServletContext(getServletContext());
 		wac.setServletConfig(getServletConfig());
 		wac.setNamespace(getNamespace());
+
+		//注册监听器
+		//如果子容器refresh完成就会推送ContextRefreshed事件,这个监听器收到后,开始初始化SpringMVC的各种组件
+		//以下是初始化组件的源码:
+		//initMultipartResolver(context);
+		//initLocaleResolver(context);
+		//initThemeResolver(context);
+		//initHandlerMappings(context);熟悉的HandlerMappings
+		//initHandlerAdapters(context);熟悉的HandlerAdapters
+		//initHandlerExceptionResolvers(context);
+		//initRequestToViewNameTranslator(context);
+		//initViewResolvers(context);熟悉的ViewResolvers
+		//initFlashMapManager(context);
+		//
+		//这些组件被子容器加载后成为一个bean,同事设置到DispatcherServlet中去
+		//这样,当客户端的请求被DispatcherServlet拿到后,就会去调动各个组件完成相应
 		wac.addApplicationListener(new SourceFilteringListener(wac, new ContextRefreshListener()));
 
 		// The wac environment's #initPropertySources will be called in any case when the context
 		// is refreshed; do it eagerly here to ensure servlet property sources are in place for
 		// use in any post-processing or initialization that occurs below prior to #refresh
+
+		//将init-param设置到Environment中
 		ConfigurableEnvironment env = wac.getEnvironment();
 		if (env instanceof ConfigurableWebEnvironment) {
 			((ConfigurableWebEnvironment) env).initPropertySources(getServletContext(), getServletConfig());
 		}
 
+		//子类扩展
 		postProcessWebApplicationContext(wac);
 		applyInitializers(wac);
+
+		//刷新子容器上下文
 		wac.refresh();
 	}
 

@@ -1,4 +1,4 @@
-package com.jianghaotian.mvc;
+package com.jianghaotian.springmvc;
 
 /**
  * 描述:
@@ -10,9 +10,13 @@ package com.jianghaotian.mvc;
  */
 public class Test {
 	public static void main(String[] args) {
-		//SpringMVC封装了Servlet,程序员可以很方便的使用
+		//Java提供了servlet的功能
+		//使用纯Servlet就要在web.xml文件(web.xml文件格式定义在Servlet规范中，因此所有符合Servlet规范的Java Servlet Container都会用到它)里配置很多servlet映射,并且每一个Servlet实现类还要继承HttpServlet,侵入性强,使用起来非常不方便
+
+		//那Spring为了方便程序员使用Servlet,诞生了SpringMVC
+		//SpringMVC封装了Servlet
 		//SpringMVC核心在于org.springframework.web.servlet.DispatcherServlet.doDispatch()方法
-		//里面会根据客户端传入的url连接,找到各种组件来完成映射,方法调用,视图解析,渲染等等
+		//里面会根据客户端传入的url连接,找到各种组件来完成映射(组件默认是通过DispatcherServlet.properties文件配置的),方法调用,视图解析,渲染等等
 		//进入此方法看详细注释
 
 		//一般情况下,我们都是使用@RequestMapping注解作为url和方法的映射工具

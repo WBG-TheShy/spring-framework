@@ -275,23 +275,35 @@ public class ContextLoader {
 		try {
 			// Store context in local instance variable, to guarantee that
 			// it is available on ServletContext shutdown.
+
+			//使用XML方式的话this.context=null
+			//如果使用Tomcat SPI方式,this.context不为空,在调用onStartup方法的时候会赋值给this.context
 			if (this.context == null) {
 				this.context = createWebApplicationContext(servletContext);
 			}
+
+			//如果实现了ConfigurableWebApplicationContext
 			if (this.context instanceof ConfigurableWebApplicationContext) {
 				ConfigurableWebApplicationContext cwac = (ConfigurableWebApplicationContext) this.context;
 				if (!cwac.isActive()) {
 					// The context has not yet been refreshed -> provide services such as
 					// setting the parent context, setting the application context id, etc
+
+					//父容器的父容器为空
 					if (cwac.getParent() == null) {
 						// The context instance was injected without an explicit parent ->
 						// determine parent for root web application context, if any.
+
+						//loadParentContext默认返回null,但是程序员可以重写loadParentContext()方法,让你的父容器还可以有父容器
 						ApplicationContext parent = loadParentContext(servletContext);
 						cwac.setParent(parent);
 					}
+					//配置+刷新父容器
 					configureAndRefreshWebApplicationContext(cwac, servletContext);
 				}
 			}
+			//将父容器存到servletContext里
+			//这样在子容器就可以调用servletContext.getAttribute()拿到父容器了
 			servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, this.context);
 
 			ClassLoader ccl = Thread.currentThread().getContextClassLoader();
@@ -372,6 +384,8 @@ public class ContextLoader {
 		if (ObjectUtils.identityToString(wac).equals(wac.getId())) {
 			// The application context id is still set to its original default value
 			// -> assign a more useful id based on available information
+
+			//设置上下文id
 			String idParam = sc.getInitParameter(CONTEXT_ID_PARAM);
 			if (idParam != null) {
 				wac.setId(idParam);
@@ -383,7 +397,14 @@ public class ContextLoader {
 			}
 		}
 
+		//设置ServletContext到Spring上下文中
+		//有什么用呢
+		//如果一个bean实现了ServletContextAware接口,则在bean的初始化前,会调用setServletContext()方法,将ServletContext传入
+		//程序员可以手动添加servlet,监听器,过滤器等操作
 		wac.setServletContext(sc);
+
+		//配置servlet的全局参数configLocationParam
+		//XML配置独有的
 		String configLocationParam = sc.getInitParameter(CONFIG_LOCATION_PARAM);
 		if (configLocationParam != null) {
 			wac.setConfigLocation(configLocationParam);
@@ -398,6 +419,8 @@ public class ContextLoader {
 		}
 
 		customizeContext(sc, wac);
+
+		//刷新Spring上下文
 		wac.refresh();
 	}
 

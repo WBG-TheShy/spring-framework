@@ -588,19 +588,27 @@ public class DispatcherServlet extends FrameworkServlet {
 	private void initHandlerMappings(ApplicationContext context) {
 		this.handlerMappings = null;
 
+		//detectAllHandlerMappings默认是true,意思是获得所有实现了HandlerMapping接口的bean
 		if (this.detectAllHandlerMappings) {
 			// Find all HandlerMappings in the ApplicationContext, including ancestor contexts.
+
+			//从子容器中获得所有实现了HandlerMapping接口的bean
 			Map<String, HandlerMapping> matchingBeans =
 					BeanFactoryUtils.beansOfTypeIncludingAncestors(context, HandlerMapping.class, true, false);
 			if (!matchingBeans.isEmpty()) {
+				//设置到handlerMappings属性中
 				this.handlerMappings = new ArrayList<>(matchingBeans.values());
 				// We keep HandlerMappings in sorted order.
+				//进行排序
 				AnnotationAwareOrderComparator.sort(this.handlerMappings);
 			}
 		}
+		//如果detectAllHandlerMappings=false,意思是我只要一个beanName是HandlerMapping的这一个bean对象
 		else {
 			try {
+				//调用getBean
 				HandlerMapping hm = context.getBean(HANDLER_MAPPING_BEAN_NAME, HandlerMapping.class);
+				//赋值
 				this.handlerMappings = Collections.singletonList(hm);
 			}
 			catch (NoSuchBeanDefinitionException ex) {
@@ -610,7 +618,11 @@ public class DispatcherServlet extends FrameworkServlet {
 
 		// Ensure we have at least one HandlerMapping, by registering
 		// a default HandlerMapping if no other mappings are found.
+
+		//如果还是没有找到handlerMappings
 		if (this.handlerMappings == null) {
+
+			//将默认的handlerMappings设置进去
 			this.handlerMappings = getDefaultStrategies(context, HandlerMapping.class);
 			if (logger.isTraceEnabled()) {
 				logger.trace("No HandlerMappings declared for servlet '" + getServletName() +
@@ -865,6 +877,8 @@ public class DispatcherServlet extends FrameworkServlet {
 				// Load default strategy implementations from properties file.
 				// This is currently strictly internal and not meant to be customized
 				// by application developers.
+
+				//加载DispatcherServlet.properties
 				ClassPathResource resource = new ClassPathResource(DEFAULT_STRATEGIES_PATH, DispatcherServlet.class);
 				defaultStrategies = PropertiesLoaderUtils.loadProperties(resource);
 			}
@@ -873,14 +887,20 @@ public class DispatcherServlet extends FrameworkServlet {
 			}
 		}
 
+		//将指定的接口作为key
 		String key = strategyInterface.getName();
+		//通过key找到对应的value值(value就是类的全限定性名)
 		String value = defaultStrategies.getProperty(key);
 		if (value != null) {
+			//根据逗号隔开,转换成数组
 			String[] classNames = StringUtils.commaDelimitedListToStringArray(value);
 			List<T> strategies = new ArrayList<>(classNames.length);
+			//循环类名
 			for (String className : classNames) {
 				try {
+					//类加载
 					Class<?> clazz = ClassUtils.forName(className, DispatcherServlet.class.getClassLoader());
+					//创建bean
 					Object strategy = createDefaultStrategy(context, clazz);
 					strategies.add((T) strategy);
 				}
