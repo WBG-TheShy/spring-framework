@@ -259,6 +259,7 @@ public class ContextLoader {
 	 * @see #CONFIG_LOCATION_PARAM
 	 */
 	public WebApplicationContext initWebApplicationContext(ServletContext servletContext) {
+		//如果发现已经存在根容器,则抛异常
 		if (servletContext.getAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE) != null) {
 			throw new IllegalStateException(
 					"Cannot initialize context because there is already a root application context present - " +
@@ -282,14 +283,14 @@ public class ContextLoader {
 				this.context = createWebApplicationContext(servletContext);
 			}
 
-			//如果实现了ConfigurableWebApplicationContext
+			//如果当前的容器实现了ConfigurableWebApplicationContext
 			if (this.context instanceof ConfigurableWebApplicationContext) {
 				ConfigurableWebApplicationContext cwac = (ConfigurableWebApplicationContext) this.context;
 				if (!cwac.isActive()) {
 					// The context has not yet been refreshed -> provide services such as
 					// setting the parent context, setting the application context id, etc
 
-					//父容器的父容器为空
+					//当前容器的父容器为空
 					if (cwac.getParent() == null) {
 						// The context instance was injected without an explicit parent ->
 						// determine parent for root web application context, if any.
@@ -397,7 +398,7 @@ public class ContextLoader {
 			}
 		}
 
-		//设置ServletContext到Spring上下文中
+		//设置ServletContext到子容器上下文中
 		//有什么用呢
 		//如果一个bean实现了ServletContextAware接口,则在bean的初始化前,会调用setServletContext()方法,将ServletContext传入
 		//程序员可以手动添加servlet,监听器,过滤器等操作

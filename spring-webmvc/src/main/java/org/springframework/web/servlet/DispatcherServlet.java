@@ -1070,7 +1070,7 @@ public class DispatcherServlet extends FrameworkServlet {
 				//private final Object handler:具体映射到的方法(一般情况下,RequestMappingHandlerMapping解析出来的是一个HandleMethod类型)
 				//private final List<HandlerInterceptor> interceptorList = new ArrayList<>():拦截器链
 
-				//RequestMappingHandlerMapping由Spring单独注册成为一个bean,并且实现了InitializingBean接口,重写了afterPropertiesSet()方法
+				//RequestMappingHandlerMapping由SpringMVC单独注册成为一个bean,并且实现了InitializingBean接口,重写了afterPropertiesSet()方法
 				//org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping.afterPropertiesSet()
 				mappedHandler = getHandler(processedRequest);
 				if (mappedHandler == null) {
@@ -1092,9 +1092,9 @@ public class DispatcherServlet extends FrameworkServlet {
 					}
 				}
 
-				//调用拦截器里的preHandle方法
+				//依次调用拦截器里的preHandle方法
 				if (!mappedHandler.applyPreHandle(processedRequest, response)) {
-					//如果返回false,则直接return,不进行后续处理了
+					//如果一旦有一个拦截器返回false,则直接return,不进行后续处理了
 					return;
 				}
 
@@ -1300,7 +1300,7 @@ public class DispatcherServlet extends FrameworkServlet {
 	protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
 		if (this.handlerMappings != null) {
 			//拿到所有的handlerMapping,开始解析
-			//handlerMappings属性是在容器启动阶段初始化设置的,Spring会从上下文中寻找类型是HandleMapping类型的bean,添加到handlerMappings中
+			//handlerMappings属性是在容器启动阶段初始化设置的,Spring会从子容器中寻找类型是HandleMapping类型的bean,添加到handlerMappings中
 			//具体逻辑在initHandlerMapping()中
 			for (HandlerMapping mapping : this.handlerMappings) {
 				//具体是调用org.springframework.web.servlet.handler.AbstractHandlerMapping.getHandler()

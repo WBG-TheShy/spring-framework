@@ -75,6 +75,7 @@ public interface HandlerAdapter {
 	 * @throws Exception in case of errors
 	 */
 	@Nullable
+	//一般用AbstractHandlerMethodAdapter
 	ModelAndView handle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception;
 
 	/**

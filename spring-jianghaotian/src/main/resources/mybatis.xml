@@ -7,7 +7,8 @@
 		<environment id="mysql">
 			<!--配置事务的类型-->
 			<transactionManager type="JDBC"/>
-			<!--配置数据源(连接池)-->
+			<!--配置数据源(连接池) mybatis内置了JNDI,POOLED,UNPOOLED三种类型的数据源,其中POOLED是mybatis自带的一个同步的线程安全的数据库连接池,
+			一般在生产中,我们会使用c3p0或者druid连接池-->
 			<dataSource type="POOLED">
 				<!--配置连接数据库的四个基本信息-->
 				<property name="driver" value="com.mysql.jdbc.Driver"/>
@@ -19,7 +20,7 @@
 	</environments>
 
 	<mappers>
-		<mapper resource="mapper/PersonMapper.xml"/>
+		<mapper resource="mapper/UserMapper.xml"/>
 	</mappers>
 
 </configuration>

@@ -285,7 +285,7 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 		//判断方法上是否有@RequestMapping注解,如果有,则封装成一个RequestMappingInfo
 		RequestMappingInfo info = createRequestMappingInfo(method);
 		if (info != null) {
-			//判断类上是否也有@RequestMapping注解,如果有,则封装成一个RequestMappingInfo
+			//判断类上是否也有@RequestMapping注解,如果有,则封装成一个RequestMappingInfo(RequestMappingInfo内有许多基础的condition)
 			RequestMappingInfo typeInfo = createRequestMappingInfo(handlerType);
 			if (typeInfo != null) {
 				//两个RequestMappingInfo合并
@@ -332,7 +332,7 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 				getCustomTypeCondition((Class<?>) element) : getCustomMethodCondition((Method) element));
 		//构造RequestMappingInfo对象
 		//其中,会同时构造许多基础的condition
-		//例如:RequestMethodCondition会判断当前的请求的类型和注解上定义的类型是否匹配,如果匹配,才会去执行
+		//例如:RequestMethodCondition会判断当前的请求的类型(GET POST DELETE等)和注解上定义的类型是否匹配,如果匹配,才会去执行
 		return (requestMapping != null ? createRequestMappingInfo(requestMapping, condition) : null);
 	}
 
@@ -390,6 +390,7 @@ public class RequestMappingHandlerMapping extends RequestMappingInfoHandlerMappi
 			builder.customCondition(customCondition);
 		}
 		//构造者模式
+		//build()方法里创建了许多基础的condition
 		return builder.options(this.config).build();
 	}
 

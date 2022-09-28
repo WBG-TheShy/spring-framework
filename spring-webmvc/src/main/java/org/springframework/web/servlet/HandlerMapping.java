@@ -167,6 +167,8 @@ public interface HandlerMapping {
 	 * any interceptors, or {@code null} if no mapping found
 	 * @throws Exception if there is an internal error
 	 */
+
+	//一般情况进入AbstractHandlerMapping
 	@Nullable
 	HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception;
 

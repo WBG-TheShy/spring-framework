@@ -184,6 +184,7 @@ public interface WebApplicationInitializer {
 	 * @throws ServletException if any call against the given {@code ServletContext}
 	 * throws a {@code ServletException}
 	 */
+	//一般进入AbstractDispatcherServletInitializer
 	void onStartup(ServletContext servletContext) throws ServletException;
 
 }

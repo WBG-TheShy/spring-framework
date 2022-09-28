@@ -566,16 +566,22 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	@Override
 	public void afterPropertiesSet() {
 		// Do this first, it may add ResponseBody advice beans
+		//初始化@ControllerAdvice标注的Bean，并解析此Bean内部各部分（@ModelAttribute、@InitBinder、RequestBodyAdvice和ResponseBodyAdvice接口）然后缓存起来。
 		initControllerAdviceCache();
 
+		// 初始化参数解析器
 		if (this.argumentResolvers == null) {
 			List<HandlerMethodArgumentResolver> resolvers = getDefaultArgumentResolvers();
 			this.argumentResolvers = new HandlerMethodArgumentResolverComposite().addResolvers(resolvers);
 		}
+
+		// 初始化@InitBinder的参数解析器
 		if (this.initBinderArgumentResolvers == null) {
 			List<HandlerMethodArgumentResolver> resolvers = getDefaultInitBinderArgumentResolvers();
 			this.initBinderArgumentResolvers = new HandlerMethodArgumentResolverComposite().addResolvers(resolvers);
 		}
+
+		// 初始化返回值解析器
 		if (this.returnValueHandlers == null) {
 			List<HandlerMethodReturnValueHandler> handlers = getDefaultReturnValueHandlers();
 			this.returnValueHandlers = new HandlerMethodReturnValueHandlerComposite().addHandlers(handlers);
@@ -583,6 +589,11 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	}
 
 	private void initControllerAdviceCache() {
+		//4个作用总结如下：
+		//找到容器内（包括父容器）所有的标注有@ControllerAdvice注解的Bean们缓存起来，然后一个个解析此种Bean
+		//找到该Advice Bean内所有的标注有@ModelAttribute但没标注@RequestMapping的方法们，缓存到modelAttributeAdviceCache里对全局生效
+		//找到该Advice Bean内所有的标注有@InitBinder的方法们，缓存到initBinderAdviceCache里对全局生效
+		//找到该Advice Bean内所有实现了接口RequestBodyAdvice/ResponseBodyAdvice们，最终放入缓存requestResponseBodyAdvice的头部，他们会介入请求body和返回body
 		if (getApplicationContext() == null) {
 			return;
 		}
@@ -642,11 +653,16 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	 * and custom resolvers provided via {@link #setCustomArgumentResolvers}.
 	 */
 	private List<HandlerMethodArgumentResolver> getDefaultArgumentResolvers() {
+		//初始化HandlerMethodArgumentResolver，提供对方法参数的支持。
+		//也就是@RequestMapping的handler上能写哪些注解自动封装参数，是由这里决定的。
 		List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>(30);
 
 		// Annotation-based argument resolution
+		//基于参数上的注解
 		resolvers.add(new RequestParamMethodArgumentResolver(getBeanFactory(), false));
+		//@RequestParam
 		resolvers.add(new RequestParamMapMethodArgumentResolver());
+		//@PathVariable
 		resolvers.add(new PathVariableMethodArgumentResolver());
 		resolvers.add(new PathVariableMapMethodArgumentResolver());
 		resolvers.add(new MatrixVariableMethodArgumentResolver());
@@ -662,6 +678,8 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		resolvers.add(new RequestAttributeMethodArgumentResolver());
 
 		// Type-based argument resolution
+		//基于参数类型
+		//ServletRequest
 		resolvers.add(new ServletRequestMethodArgumentResolver());
 		resolvers.add(new ServletResponseMethodArgumentResolver());
 		resolvers.add(new HttpEntityMethodProcessor(getMessageConverters(), this.requestResponseBodyAdvice));
@@ -676,12 +694,14 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		}
 
 		// Custom arguments
+		//用户自定义
 		if (getCustomArgumentResolvers() != null) {
 			resolvers.addAll(getCustomArgumentResolvers());
 		}
 
 		// Catch-all
 		resolvers.add(new PrincipalMethodArgumentResolver());
+		// 兜底方案：这就是为何很多时候不写注解参数也能够被自动封装的原因
 		resolvers.add(new RequestParamMethodArgumentResolver(getBeanFactory(), true));
 		resolvers.add(new ServletModelAttributeMethodProcessor(true));
 
@@ -727,6 +747,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	 * custom handlers provided via {@link #setReturnValueHandlers}.
 	 */
 	private List<HandlerMethodReturnValueHandler> getDefaultReturnValueHandlers() {
+		//提供对HandlerMethod返回值的支持（比如@ResponseBody、DeferredResult等返回值类型）。
 		List<HandlerMethodReturnValueHandler> handlers = new ArrayList<>(20);
 
 		// Single-purpose return value types
@@ -744,11 +765,14 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		handlers.add(new AsyncTaskMethodReturnValueHandler(this.beanFactory));
 
 		// Annotation-based return value types
+		// 当标注有@ModelAttribute或者@ResponseBody的时候  这里来处理。显然也用到了消息转换器~
 		handlers.add(new ServletModelAttributeMethodProcessor(false));
 		handlers.add(new RequestResponseBodyMethodProcessor(getMessageConverters(),
 				this.contentNegotiationManager, this.requestResponseBodyAdvice));
 
 		// Multi-purpose return value types
+		//当返回的是个字符串/Map时候，这时候就可能有多个目的了（Multi-purpose）
+		//比如字符串：可能重定向redirect、或者直接到某个view
 		handlers.add(new ViewNameMethodReturnValueHandler());
 		handlers.add(new MapMethodProcessor());
 

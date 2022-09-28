@@ -221,7 +221,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 * @see #handlerMethodsInitialized
 	 */
 	protected void initHandlerMethods() {
-		//getCandidateBeanNames():获取当前Spring容器中所有bean的名字
+		//getCandidateBeanNames():获取子容器中所有bean的名字
 		for (String beanName : getCandidateBeanNames()) {
 			if (!beanName.startsWith(SCOPED_TARGET_NAME_PREFIX)) {
 				//解析@RequestMapping注解
@@ -280,6 +280,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	protected void detectHandlerMethods(Object handler) {
 		//入参的handler是bean对象的名字
 
+		//获取bean的类型
 		Class<?> handlerType = (handler instanceof String ?
 				obtainApplicationContext().getType((String) handler) : handler.getClass());
 
@@ -391,8 +392,9 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	@Override
 	@Nullable
 	protected HandlerMethod getHandlerInternal(HttpServletRequest request) throws Exception {
-		//请求地址(例如:/user/info)
+		//根据request获得请求地址(例如:/user/info)
 		String lookupPath = initLookupPath(request);
+		//给mappingRegistry上锁
 		this.mappingRegistry.acquireReadLock();
 		try {
 			//根据请求地址,查找对应的处理器方法
@@ -400,6 +402,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 			return (handlerMethod != null ? handlerMethod.createWithResolvedBean() : null);
 		}
 		finally {
+			//给mappingRegistry解锁
 			this.mappingRegistry.releaseReadLock();
 		}
 	}
@@ -425,8 +428,9 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 		//等等.....
 		List<Match> matches = new ArrayList<>();
 		//现根据请求路径去pathLookup缓存中获取匹配的RequestMappingInfo
+		//有可能会匹配多个,比如一个GET请求一个POST请求
 		List<T> directPathMatches = this.mappingRegistry.getMappingsByDirectPath(lookupPath);
-		//如果获取到了
+		//如果获取到了(这里获取到的是路径完全匹配的)
 		if (directPathMatches != null) {
 			//将匹配到的RequestMappingInfo都拿出来,并进行condition以及通配符的检查,将检查通过的RequestMappingInfo加入到matches中
 			addMatchingMappings(directPathMatches, matches, request);
@@ -464,7 +468,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 				else {
 					//拿到第二个匹配的
 					Match secondBestMatch = matches.get(1);
-					//如果第一个和第二个相同,则抛异常
+					//如果第一个对应的方法和第二个对应的方法是同一个方法,则抛异常(必须保证有且只有一个method被匹配到)
 					if (comparator.compare(bestMatch, secondBestMatch) == 0) {
 						Method m1 = bestMatch.getHandlerMethod().getMethod();
 						Method m2 = secondBestMatch.getHandlerMethod().getMethod();
@@ -486,9 +490,12 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	}
 
 	private void addMatchingMappings(Collection<T> mappings, List<Match> matches, HttpServletRequest request) {
+		//遍历所有匹配到的mapping对象
 		for (T mapping : mappings) {
+			//进行condition校验,校验通过的会返回RequestMappingInfo,校验不通过的返回null
 			T match = getMatchingMapping(mapping, request);
 			if (match != null) {
+				//将RequestMappingInfo,MappingRegistration封装成Match对象并加入到matches集合中
 				matches.add(new Match(match, this.mappingRegistry.getRegistrations().get(mapping)));
 			}
 		}

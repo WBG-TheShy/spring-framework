@@ -1,4 +1,4 @@
-package com.jianghaotian.spring_springmvc;
+package com.jianghaotian.springmvc_spring;
 
 /**
  * 描述:
@@ -66,8 +66,8 @@ public class Test {
 		//	  xml文件的配置方式已经过时,Spring6.0甚至会将xml配置方式删除
 		//	  那么零XML配置方式的替代者----JavaConfig方式由此诞生
 		//
-		//	  Servlet3.0提供了一个SPI(服务提供者接口,意思是你只要按照我饿要求来,我就会调用指定的内容)
-		//    Servlet3.0规定,只要在你的/META-INF/services文件下,创建一个文件,文件名就叫javax.servlet.ServletContainerInitializer
+		//	  Servlet3.0提供了一个SPI(服务提供者接口,意思是你只要按照我的要求来,我就会调用指定的内容)
+		//    Servlet3.0规定,只要在你项目的/META-INF/services目录下,创建一个文件,文件名就叫javax.servlet.ServletContainerInitializer
 		//	  然后在你的项目里写一个类,继承javax.servlet.ServletContainerInitializer这个类,重写onStartup()方法,并且把这个实现类的类全限定性名
 		//	  复制到刚才的文件中,这样Tomcat就会在启动的时候通过反射实例化你的实现类,然后调用你写的onStartup()方法,
 		//	  所以我们就不用再去利用xml文件来进行配置,全部的配置都在这个onStartup()方法中完成
@@ -84,17 +84,17 @@ public class Test {
 		//
 		//	  一般情况下默认继承AbstractAnnotationConfigDispatcherServletInitializer类,Tomcat会调用父类的父类的onStartup()方法,
 		//	  具体方法是org.springframework.web.servlet.support.AbstractDispatcherServletInitializer.onStartup
-		//	  其中就会创建两个容器(都是AnnotationConfigWebApplicationContext),一个上下文监听器ContextLoaderListener,一个分发器DispatcherServlet
+		//	  其中就会创建子容器和父容器(都是AnnotationConfigWebApplicationContext),一个上下文监听器ContextLoaderListener,一个分发器DispatcherServlet
 		//
 		//
-		//	  创建完上面的这几个,Tomcat会继续走自己的逻辑,直到加载监听器的时候,会调用上面的ContextLoaderListener的contextInitialized()方法,也就是
-		//	  监听器初始化的方法,具体方法是:org.springframework.web.context.ContextLoaderListener.contextInitialized
-		//	  这个方法里会refresh父容器
+		//	  创建完上面的这几个,Tomcat会继续走自己的逻辑,直到加载Servlet上下文的时候,就会发布ServletContextEvent事件,并调用上面的ContextLoaderListener的contextInitialized()方法,也就是
+		//	  Servlet上下文初始化的方法,具体方法是:org.springframework.web.context.ContextLoaderListener.contextInitialized
+		//	  这个方法里会refresh父容器(扫描Service层和Dao层)
 		//
 		//	  下一步,加载Servlet,此时DispatcherServlet就会被Tomcat加载,会调用init()初始化方法
 		//	  具体方法是:org.springframework.web.servlet.HttpServletBean.init
 		//	  这个方法里会refresh子容器,同时会将上一步的父容器设置到子容器的parent属性中去(成为父子容器,其核心体现在于当从子容器找不到一个bean的时候就去父容器找),
-		//	  并且在refresh方法后会进行SpringMVC各种组件的bean创建(HandlerMapping,HandlerAdapter等等......)
+		//	  并且在refresh方法后会推送ContextRefreshed事件,监听器收到后,开始初始化SpringMVC的各种组件(HandlerMapping,HandlerAdapter等等......,都会存到DispatcherServlet的属性中)
 		//
 
 
@@ -113,10 +113,10 @@ public class Test {
 		//
 		//    是否可以把我们所需的Bean都放入Spring-mvc子容器里面来管理(springmvc的spring-servlet.xml中配置全局扫描)?
 		//    可以,因为父容器的体现无非是为了获取子容器不包含的bean, 如果全部包含在子容器完全用不到父容器了，所以是可以全部放在springmvc子容器来管理的。
-		//    虽然可以这么做不过一般应该是不推荐这么去做的，一般人也不会这么干的。如果你的项目里有用到事务、或者aop记得也需要把这部分配置需要放到Spring-mvc子容器的配置文件来，
+		//    虽然可以这么做,不过一般应该是不推荐这么去做的，一般人也不会这么干的。如果你的项目里有用到事务、或者aop记得也需要把这部分配置需要放到Spring-mvc子容器的配置文件来，
 		//    不然一部分内容在子容器和一部分内容在父容器,可能就会导致你的事务或者AOP不生效。所以如果aop或事务如果不生效也有可能是通过父容器 (spring)去增强子容器(Springmvc)，也就无法增强
 		//
-		//
+		//	  父子容器一个讲的比较好的文章:https://blog.csdn.net/zzuhkp/article/details/121071737
 		//
 		//
 	}
